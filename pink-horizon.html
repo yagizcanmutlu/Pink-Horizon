@@ -1,0 +1,1743 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>3D Night Racing – Crash→Idle Night, Random Spawns, Fresh Collisions</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    html,body{height:100%;background:#000}
+    #root{height:100dvh;width:100vw;overflow:hidden}
+    .full-screen-3d-example{opacity:0;transition:opacity 1s ease-out}
+    .full-screen-3d-example.-loaded{opacity:1}
+
+    /* Overlay güvenlik: kapandığında tamamen ses gizle */
+    .overlay.hidden{display:none!important;}
+
+
+    /* === HUD: Puan & Süre üst-ORTA === */
+    .hud{
+      position:fixed;
+      top:14px;
+      left:50%;
+      right:auto;                 /* eskisini iptal et */
+      transform:translateX(-50%);
+      display:flex;
+      gap:10px;
+      z-index:9;
+      font-family:ui-monospace,Menlo,Consolas,monospace;
+      color:#fff;
+      pointer-events:none;        /* tıklamayı engellemesin */
+      mix-blend-mode:screen;
+    }
+
+    .hud .pill{background:rgba(0,0,0,.35);padding:8px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.08);
+               text-shadow:0 0 8px rgba(76,201,240,.35)}
+
+    /* Alt-ofset: Toastlar ve Başla/Tekrar Oyna metni ekranın neresinde dursun? */
+    :root { --lower-ui-top: 72%; } /* 68–76% arası deneyebilirsin */
+
+    /* TOASTS → alt orta ve SADECE METİN */
+    .toasts{
+      position:fixed;
+      top: var(--lower-ui-top);
+      left:50%;
+      transform:translate(-50%,-50%);
+      display:flex;flex-direction:column;align-items:center;gap:8px;
+      z-index:10; pointer-events:none;
+    }
+    .toast{
+      background: transparent;      /* kutu yok */
+      border: 0;
+      padding: 0;                   /* boşluk yok → yalnızca yazı */
+      color:#fff;
+      font-family: ui-monospace,Menlo,Consolas,monospace;
+      font-size: 18px;
+      opacity:0; transform:translateY(10px) scale(.98);
+      transition:opacity .25s ease, transform .25s ease;
+      text-shadow: 0 2px 10px rgba(0,0,0,.6); /* okunaklı kalsın */
+    }
+    .toast.show{ opacity:1; transform:translateY(0) scale(1) }
+
+    /* OVERLAY → arka plan ve çerçeve YOK, alt-ortada sadece metin + tıklanabilir yazı */
+    .overlay{
+      position:fixed; inset:0;
+      display:block;                /* flex değil; konumu biz vereceğiz */
+      background: none;             /* karartma yok */
+      z-index:12;
+    }
+    .panel{
+      position:absolute;
+      top: var(--lower-ui-top);
+      left:50%;
+      transform:translate(-50%,-50%);
+      background: none;             /* kutu yok */
+      border: 0;
+      box-shadow: none;
+      padding: 0;
+      color:#fff;
+      text-align:center;
+      font-family: ui-monospace,Menlo,Consolas,monospace;
+      min-width: unset;
+    }
+    .panel h1{ font-size:20px; margin-bottom:6px; text-shadow:0 2px 10px rgba(0,0,0,.6) }
+    .panel p { opacity:.9;  margin-bottom:10px }
+
+    /* Alt-ofset hâlâ senin kontrolünde */
+    :root { --lower-ui-top: 72%; }
+
+    /* Buton: Aero glass + hafif 3D */
+    .panel button{
+      all: unset;
+      cursor: pointer;
+      display: inline-block;
+      padding: 10px 18px;
+      border-radius: 14px;
+      color:#fff;
+      font-weight:800;
+      text-shadow: 0 2px 10px rgba(0,0,0,.6);
+      background: linear-gradient(to bottom, rgba(255,255,255,.18), rgba(255,255,255,.06));
+      border: 1px solid rgba(255,255,255,.28);
+      box-shadow:
+        0 10px 30px rgba(0,0,0,.35),
+        inset 0 1px 0 rgba(255,255,255,.25),
+        inset 0 -8px 18px rgba(255,255,255,.08);
+      backdrop-filter: blur(12px) saturate(160%);
+      -webkit-backdrop-filter: blur(12px) saturate(160%);
+      transform: translateZ(0);
+      transition: transform .12s ease, box-shadow .12s ease, filter .12s ease;
+    }
+    .panel button:hover{
+      transform: translateY(-1px) scale(1.02);
+      box-shadow:
+        0 12px 36px rgba(0,0,0,.45),
+        inset 0 1px 0 rgba(255,255,255,.3),
+        inset 0 -8px 18px rgba(255,255,255,.1);
+    }
+    .panel button:active{ transform: translateY(1px) scale(.99); }
+
+    /* Overlay kapatma emniyeti */
+    .overlay.hidden { display: none !important; }
+
+    /* Sağ-alt ses paneli (aero glass) */
+    .audio-panel{
+      position:fixed; right:14px; bottom:14px; z-index:13;
+      display:flex; flex-direction:column; gap:10px;
+      padding:10px 12px; border-radius:16px;
+      background: linear-gradient(to bottom, rgba(255,255,255,.18), rgba(255,255,255,.06));
+      border:1px solid rgba(255,255,255,.28);
+      box-shadow:0 10px 30px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.25), inset 0 -8px 18px rgba(255,255,255,.08);
+      backdrop-filter: blur(12px) saturate(160%); -webkit-backdrop-filter: blur(12px) saturate(160%);
+      color:#fff; font-family: ui-monospace,Menlo,Consolas,monospace;
+    }
+    .audio-panel .row{ display:flex; align-items:center; gap:8px; min-width:220px; }
+    .audio-panel label{ width:52px; opacity:.9; }
+    .audio-panel .vol{ flex:1; accent-color:#4cc9f0; }
+    .mute-btn{ all:unset; cursor:pointer; width:32px; height:32px; display:grid; place-items:center; border-radius:50%;
+      background: rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.2); }
+    .mute-btn .icon-on{display:block}
+    .mute-btn .icon-off{display:none}
+    .mute-btn[data-muted="true"] .icon-on{display:none}
+    .mute-btn[data-muted="true"] .icon-off{display:block}
+
+    /* Overlay güvenlik: kapandığında tamamen gizle (önceden eklediysen kalsın) */
+    .overlay.hidden{display:none!important;}
+
+    /* Puan yazısının rengi */
+    .toast .points{
+      color: #0cf400;
+      font-weight: 700;
+    }
+
+    /* Fail-safe: .hidden her şeyi saklar */
+    .hidden{ display:none !important; }
+
+    /* === FAB: ? ve Ses Ayarları ALT-ORTA === */
+    .fab-col{
+      position:fixed;
+      left:50%;
+      bottom: max(14px, env(safe-area-inset-bottom));
+      transform:translateX(-50%);
+      display:flex;
+      gap:10px;
+      z-index:13;
+      pointer-events:auto;
+    }
+
+    /* Cam görünümlü küçük yuvarlak butonlar */
+    .glass-btn{
+      all:unset;
+      cursor:pointer;
+      width:38px; height:38px;
+      display:grid; place-items:center;
+      border-radius:999px;
+      color:#fff;
+      background: linear-gradient(to bottom, rgba(255,255,255,.18), rgba(255,255,255,.06));
+      border:1px solid rgba(255,255,255,.28);
+      box-shadow:0 10px 30px rgba(0,0,0,.35),
+                inset 0 1px 0 rgba(255,255,255,.25),
+                inset 0 -8px 18px rgba(255,255,255,.08);
+      backdrop-filter: blur(12px) saturate(160%);
+      -webkit-backdrop-filter: blur(12px) saturate(160%);
+      transition: transform .12s ease, box-shadow .12s ease;
+    }
+    .glass-btn:hover{
+      transform:translateY(-1px) scale(1.02);
+      box-shadow:0 12px 36px rgba(0,0,0,.45),
+                inset 0 1px 0 rgba(255,255,255,.30),
+                inset 0 -8px 18px rgba(255,255,255,.10);
+    }
+    .glass-btn:active{ transform:translateY(1px) scale(.98); }
+    .glass-btn svg{ width:22px; height:22px; display:block; }
+
+    .glass-panel{
+      position:fixed; top:68px; right:14px; z-index:14;
+      width:min(420px, calc(100vw - 28px)); max-height:min(70vh, 520px); overflow:auto;
+      padding:12px 14px; border-radius:16px; color:#fff; font-family:ui-monospace,Menlo,Consolas,monospace;
+      background:linear-gradient(to bottom, rgba(255,255,255,.18), rgba(255,255,255,.06));
+      border:1px solid rgba(255,255,255,.28);
+      box-shadow:0 10px 30px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.25), inset 0 -8px 18px rgba(255,255,255,.08);
+      backdrop-filter: blur(12px) saturate(160%); -webkit-backdrop-filter: blur(12px) saturate(160%);
+    }
+
+
+  </style>
+  <!-- Libs (r146) -->
+  <script src="https://unpkg.com/three@0.146.0/build/three.min.js"></script>
+  <script src="https://unpkg.com/three@0.146.0/examples/js/postprocessing/EffectComposer.js"></script>
+  <script src="https://unpkg.com/three@0.146.0/examples/js/postprocessing/ShaderPass.js"></script>
+  <script src="https://unpkg.com/three@0.146.0/examples/js/shaders/CopyShader.js"></script>
+  <script src="https://unpkg.com/three@0.146.0/examples/js/postprocessing/RenderPass.js"></script>
+  <script src="https://unpkg.com/three@0.146.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+  <script src="https://unpkg.com/three@0.146.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+  <script src="https://unpkg.com/three@0.146.0/examples/js/objects/Reflector.js"></script>
+</head>
+<body>
+  <div id="root" class="full-screen-3d-example"></div>
+
+  <!-- HUD -->
+  <div class="hud">
+    <div class="pill" id="hud-score">Puan: 0</div>
+    <div class="pill" id="hud-time">Süre: 00:00.0</div>
+  </div>
+
+  <!-- Toasts (center) -->
+  <div class="toasts" id="toasts"></div>
+
+  <!-- Start/Crash Overlay -->
+  <div class="overlay" id="overlay">
+    <div class="panel">
+      <h1 id="ovlTitle">Gece devriyesi 🌙</h1>
+      <p id="ovlDesc">Trafikli oyunu başlatmak için “Başla”ya bas.</p>
+      <button id="playBtn">Başla</button>
+    </div>
+  </div>
+
+<!-- Audio Panel (SADECE ses denetimleri; sağ-alt) -->
+<div id="audioPanel" class="audio-panel hidden" role="group" aria-label="Ses denetimleri">
+  <div class="row">
+    <button id="bgmMuteBtn" class="mute-btn" type="button" aria-label="Müziği kapat" data-muted="false" title="Müzik">
+      <span class="icon-on">
+        <!-- hoparlör açık -->
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24">
+          <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M17.5 8.43A4.985 4.985 0 0 1 19 12a4.984 4.984 0 0 1-1.43 3.5M14 6.135v11.73a1 1 0 0 1-1.64.768L8 15H6a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h2l4.36-3.633a1 1 0 0 1 1.64.768Z"/>
+        </svg>
+      </span>
+      <span class="icon-off">
+        <!-- hoparlör kapalı -->
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24">
+          <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M15.5 8.43A4.985 4.985 0 0 1 17 12c0 1.126-.5 2.5-1.5 3.5m2.864-9.864A8.972 8.972 0 0 1 21 12c0 2.023-.5 4.5-2.5 6M7.8 7.5l2.56-2.133a1 1 0 0 1 1.64.768V12m0 4.5v1.365a1 1 0 0 1-1.64.768L6 15H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1m1-4 14 14"/>
+        </svg>
+      </span>
+    </button>
+    <label for="bgmVol">Müzik</label>
+    <input id="bgmVol" class="vol" type="range" min="0" max="100" value="60" />
+  </div>
+
+  <div class="row">
+    <button id="engMuteBtn" class="mute-btn" type="button" aria-label="Motoru kapat" data-muted="false" title="Motor">
+      <span class="icon-on">
+        <!-- hoparlör açık -->
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24">
+          <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M17.5 8.43A4.985 4.985 0 0 1 19 12a4.984 4.984 0 0 1-1.43 3.5M14 6.135v11.73a1 1 0 0 1-1.64.768L8 15H6a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h2l4.36-3.633a1 1 0 0 1 1.64.768Z"/>
+        </svg>
+      </span>
+      <span class="icon-off">
+        <!-- hoparlör kapalı -->
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24">
+          <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M15.5 8.43A4.985 4.985 0 0 1 17 12c0 1.126-.5 2.5-1.5 3.5m2.864-9.864A8.972 8.972 0 0 1 21 12c0 2.023-.5 4.5-2.5 6M7.8 7.5l2.56-2.133a1 1 0 0 1 1.64.768V12m0 4.5v1.365a1 1 0 0 1-1.64.768L6 15H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1m1-4 14 14"/>
+        </svg>
+      </span>
+    </button>
+    <label for="engVol">Motor</label>
+    <input id="engVol" class="vol" type="range" min="0" max="100" value="70" />
+  </div>
+</div>
+
+<!-- ÜST-SAĞ: Yardım (?) ve Ses Ayarları -->
+<div class="fab-col">
+  <button id="helpBtn" class="glass-btn" title="Nasıl oynanır?">
+    <!-- Soru işareti (senin verdiğin) -->
+    <svg class="w-6 h-6" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
+      <path fill-rule="evenodd" d="M2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10S2 17.523 2 12Zm9.008-3.018a1.502 1.502 0 0 1 2.522 1.159v.024a1.44 1.44 0 0 1-1.493 1.418 1 1 0 0 0-1.037.999V14a1 1 0 1 0 2 0v-.539a3.44 3.44 0 0 0 2.529-3.256 3.502 3.502 0 0 0-7-.255 1 1 0 0 0 2 .076c.014-.398.187-.774.48-1.044Zm.982 7.026a1 1 0 1 0 0 2H12a1 1 0 1 0 0-2h-.01Z" clip-rule="evenodd"/>
+    </svg>
+  </button>
+
+  <button id="settingsBtn" class="glass-btn" title="Ses ayarları">
+    <!-- Ses ayarları (senin verdiğin) -->
+    <svg class="w-6 h-6" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
+      <path d="M13 6.037c0-1.724-1.978-2.665-3.28-1.562L5.638 7.933H4c-1.105 0-2 .91-2 2.034v4.066c0 1.123.895 2.034 2 2.034h1.638l4.082 3.458c1.302 1.104 3.28.162 3.28-1.562V6.037Z"/>
+      <path fill-rule="evenodd" d="M14.786 7.658a.988.988 0 0 1 1.414-.014A6.135 6.135 0 0 1 18 12c0 1.662-.655 3.17-1.715 4.27a.989.989 0 0 1-1.414.014 1.029 1.029 0 0 1-.014-1.437A4.085 4.085 0 0 0 16 12a4.085 4.085 0 0 0-1.2-2.904 1.029 1.029 0 0 1-.014-1.438Z" clip-rule="evenodd"/>
+      <path fill-rule="evenodd" d="M17.657 4.811a.988.988 0 0 1 1.414 0A10.224 10.224 0 0 1 22 12c0 2.807-1.12 5.35-2.929 7.189a.988.988 0 0 1-1.414 0 1.029 1.029 0 0 1 0-1.438A8.173 8.173 0 0 0 20 12a8.173 8.173 0 0 0-2.343-5.751 1.029 1.029 0 0 1 0-1.438Z" clip-rule="evenodd"/>
+    </svg>
+  </button>
+</div>
+
+<!-- NASIL OYNANIR (aero glass panel, üst-sağda) -->
+<div id="helpPanel" class="glass-panel hidden" role="dialog" aria-label="Nasıl oynanır">
+  <h3>Nasıl oynanır</h3>
+  <ul>
+    <li><span class="kbd">Mouse</span> ile direksiyon…</li>
+    <li><span class="kbd">Space</span> veya <span class="kbd">Sol tık</span> basılı tut: <strong>Boost</strong>.</li>
+    <li>Odak kaybolduğunda boost otomatik kapanır.</li>
+  </ul>
+
+  <h3>Puanlama</h3>
+  <ul>
+    <li><strong>Şerit değiştirme</strong>: <span class="tag">+1</span></li>
+    <li><strong>Makas</strong>: <span class="tag">+1</span></li>
+    <li><strong>Boost açıkken yanından geçiş</strong>: <span class="tag">+3</span></li>
+    <li><strong>Boost süresi</strong>: her tam saniye <span class="tag">+1</span></li>
+  </ul>
+
+  <h3>Oyun akışı</h3>
+  <ul>
+    <li><strong>Başla</strong>: Trafik açılır, süre/puan sıfırlanır.</li>
+    <li><strong>Kaza</strong>: Trafik kapanır; <em>Tekrar Oyna</em> ile yeni tur.</li>
+  </ul>
+
+  <h3>Zorluk & Trafik</h3>
+  <ul>
+    <li><strong>60. saniye</strong> sonrası spawn sıklığı ve araç sayısı artar.</li>
+    <li>Şerit hızları farklıdır (sol/orta/sağ).</li>
+    <li><strong>Duvar önleme</strong>: aynı z’de en fazla 2 şerit dolu.</li>
+  </ul>
+
+  <h3>Ses</h3>
+  <ul>
+    <li><strong>Ses Ayarları</strong> butonundan müzik ve motoru ayrı ayrı kıs/aç.</li>
+  </ul>
+</div>
+
+
+
+    <div class="row">
+      <button id="engMuteBtn" class="mute-btn" type="button" aria-label="Motoru kapat" data-muted="false" title="Motor">
+        <span class="icon-on">
+          <!-- SES AÇ -->
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24">
+            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M17.5 8.43A4.985 4.985 0 0 1 19 12a4.984 4.984 0 0 1-1.43 3.5M14 6.135v11.73a1 1 0 0 1-1.64.768L8 15H6a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h2l4.36-3.633a1 1 0 0 1 1.64.768Z"/>
+          </svg>
+        </span>
+        <span class="icon-off">
+          <!-- SES KAPAT -->
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24">
+            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M15.5 8.43A4.985 4.985 0 0 1 17 12c0 1.126-.5 2.5-1.5 3.5m2.864-9.864A8.972 8.972 0 0 1 21 12c0 2.023-.5 4.5-2.5 6M7.8 7.5l2.56-2.133a1 1 0 0 1 1.64.768V12m0 4.5v1.365a1 1 0 0 1-1.64.768L6 15H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1m1-4 14 14"/>
+          </svg>
+        </span>
+      </button>
+      <label for="engVol">Motor</label>
+      <input id="engVol" class="vol" type="range" min="0" max="100" value="70" />
+    </div>
+  </div>
+
+
+  <script>
+  const { THREE } = window;
+
+  function isMobile(){
+    let check=false; (function(a){check=/(android|bb\d+|meego).+mobile|avantgo|bada\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|iris|kindle|lge |maemo|midp|mmp|mobile.+firefox|netfront|opera m(ob|in)i|palm( os)?|phone|p(ixi|re)\/|plucker|pocket|psp|series(4|6)0|symbian|treo|up\.(browser|link)|vodafone|wap|windows ce|xda|xiino/i.test(a.substr(0,4))})(navigator.userAgent||navigator.vendor||window.opera); return check;}
+  const IS_MOBILE_DEVICE = isMobile();
+
+  // ====== CONFIG ======
+  const FLAGS = Object.freeze({ ENABLE_SHADOWS: !IS_MOBILE_DEVICE, ENABLE_BLOOM: !IS_MOBILE_DEVICE, ENABLE_NOISE: !IS_MOBILE_DEVICE });
+  const COLOR_PALETTE = Object.freeze({ black:0x010101, white:0xeeeeee, color1:0xf72585, color2:0xb5179e, color3:0x7209b7, color4:0x560bad, color5:0x480ca8, color6:0x3a0ca3, color7:0x3f37c9, color8:0x4361ee, color9:0x4895ef, color10:0x4cc9f0 });
+  const COLOR_PALETTE_GLSL = Object.freeze({ black:"vec4(0.04, 0.04, 0.04, 1.0)", white:"vec4(0.933, 0.933, 0.933, 1.0)", color1:"vec4(0.969, 0.145, 0.522, 1.0)", color2:"vec4(0.71, 0.09, 0.62, 1.0)", color3:"vec4(0.447, 0.035, 0.718, 1.0)", color4:"vec4(0.337, 0.043, 0.678, 1.0)", color5:"vec4(0.282, 0.047, 0.659, 1.0)", color6:"vec4(0.227, 0.047, 0.639, 1.0)", color7:"vec4(0.247, 0.216, 0.788, 1.0)", color8:"vec4(0.263, 0.38, 0.933, 1.0)", color9:"vec4(0.282, 0.584, 0.937, 1.0)", color10:"vec4(0.298, 0.788, 0.941, 1.0)" });
+
+  // Motor döngüsü (sadece motor sesi için)
+  const ENG_LOOP_START = 1.2;  // sn — dosyanın "stabil" kısmının başlangıcı
+  const ENG_LOOP_END   = 6.0;  // sn — stabil kısmın sonu
+  const ENG_FADE       = 0.25; // sn — döngüler arası crossfade süresi
+
+
+    // Smooth boost (2–3 sn'de aç/kapat)
+  const BOOST_TARGET_MULT = 2.2;   // Boost açıkken ulaşacağımız nihai hız çarpanı
+  const BOOST_RAMP_UP_SEC = 2.4;   // 0 → 1 yükseliş süresi (sn)
+  const BOOST_RAMP_DOWN_SEC = 0.9; // 1 → 0 dönüş süresi (sn)
+
+
+  // Çarpışma kutusu ölçekleri (istediğin gibi oynayabilirsin) ZORLUK***
+  const HITBOX_PLAYER = { x: 0.70, y: 0.92, z: 0.84 }; // oyuncu: %86 genişlik, %92 uzunluk,  x (sol-sağ, şeritler arası genişlik)
+  const HITBOX_NPC    = { x: 0.72, y: 0.92, z: 0.84 }; // npc:    %84 genişlik, %92 uzunluk
+  const SIDE_SWIPE_X  = 0.38;                           // farklı şeritteyken çarpışma saymak için en çok yan mesafe
+
+  function shrinkBox(box, scale){ // scale: {x,y,z} (0–1)
+  const size = new THREE.Vector3();
+  const ctr  = new THREE.Vector3();
+  box.getSize(size); box.getCenter(ctr);
+  size.set(size.x*scale.x, size.y*scale.y, size.z*scale.z);
+  box.min.set(ctr.x - size.x*0.5, ctr.y - size.y*0.5, ctr.z - size.z*0.5);
+  box.max.set(ctr.x + size.x*0.5, ctr.y + size.y*0.5, ctr.z + size.z*0.5);
+  return box;
+}
+
+  // Sunrise config
+  const SUNRISE_DURATION_SEC = 28;
+  const NIGHT_AMBIENT = 0.02;
+  const DAY_AMBIENT   = 0.10;
+  const NIGHT_POINT   = 0.8;
+  const DAY_POINT     = 5.0;
+
+  // Lane switching config
+  const CAR_BASE_X = 0.7;
+  const CAR_LANE_AMPLITUDE = 3.6;
+  const CAR_LERP = 0.08;
+  const CAR_BANK_MAX = 0.20;
+  const MOUSE_EXP = 1.25;
+
+  // Camera tamer
+  const CAMERA_MOUSE_X_FACTOR = 1.8;
+  const CAMERA_PARALLAX = 0.60;
+  const LOOK_FOLLOW_RATIO = 0.70;
+  const LOOK_FOLLOW_STRENGTH = 0.08;
+
+  // Traffic config
+  const PARKED_MAX = 3;
+  const PARKED_SPAWN_MIN_SEC = 3.2;   // temel ölçek
+  const PARKED_SPAWN_MEAN = 3.8;      // Poisson için ortalama (sn)
+  const PARKED_BURST_CHANCE = 0.22;   // bazen ardışık çift spawn
+  const PARKED_BURST_GAP = 6.0;       // ardışık spawn arası z mesafesi
+    // "Duvar" engelleme bandı (z ekseninde yakınlık). Oyun ilerledikçe band daralır.
+  const WALL_BAND_EARLY = 26;  // 0–30 sn
+  const WALL_BAND_MID   = 20;  // 30–60 sn
+  const WALL_BAND_LATE  = 16;  // 60+ sn
+
+  // Rezervasyon kaydını kaç saniye tutalım (duvar dalgası penceresi)
+  const WALL_WAVE_PRUNE_SEC = 8.0;
+
+
+  // Lane x
+  const PARKED_LANE_X_LEFT   = CAR_BASE_X - (CAR_LANE_AMPLITUDE * 0.96) - 0.25;
+  const PARKED_LANE_X_RIGHT  = CAR_BASE_X + (CAR_LANE_AMPLITUDE * 0.96) + 0.25;
+  const PARKED_LANE_X_MIDDLE = CAR_BASE_X;
+
+  // Speed knobs
+  const CITY_BASE_SPEED = 1.0;
+  const LANE_SPEED = Object.freeze({ LEFT:1.00, CENTER:1.15, RIGHT:0.90 });
+
+  function clampLaneX(x, isLeft){
+    const SHOULDER = 0.50, INSET = 0.40;
+    if(isLeft){ const min = CAR_BASE_X - CAR_LANE_AMPLITUDE - SHOULDER; const max = CAR_BASE_X - CAR_LANE_AMPLITUDE + INSET; return Math.min(max, Math.max(min, x)); }
+    else      { const min = CAR_BASE_X + CAR_LANE_AMPLITUDE - INSET;   const max = CAR_BASE_X + CAR_LANE_AMPLITUDE + SHOULDER; return Math.min(max, Math.max(min, x)); }
+  }
+
+  // ====== MATERIALS ======
+  class DefaultMaterial extends THREE.MeshStandardMaterial{ constructor(){ super({ color:COLOR_PALETTE.white }); } }
+  class CarMaterial extends THREE.MeshStandardMaterial{ constructor(){ super({ color:COLOR_PALETTE.black }); } }
+  class LightMaterial extends THREE.MeshStandardMaterial{ constructor(){ super({ color:COLOR_PALETTE.color1, transparent:true, opacity:1 }); } }
+  class WheelMaterial extends THREE.MeshStandardMaterial{ constructor(){ super({ color:COLOR_PALETTE.black }); } }
+  class MountainMaterial extends THREE.MeshBasicMaterial{ constructor(){ super({ color:COLOR_PALETTE.black }); } }
+
+  class CustomMaterial extends THREE.MeshStandardMaterial{ onBeforeCompile(shader){ shader.uniforms.uTime={ value:0.0 }; shader.vertexShader=shader.vertexShader.replace("#include <uv_pars_vertex>",`varying vec2 vUv;\nuniform float uTime;`); shader.vertexShader=shader.vertexShader.replace("#include <uv_vertex>","vUv = uv;"); shader.fragmentShader=shader.fragmentShader.replace("varying vec3 vViewPosition;",`varying vec3 vViewPosition;\nvarying vec2 vUv;\nuniform float uTime;`); this.userData.shader=shader; } }
+  class CustomTransparentMaterial extends CustomMaterial{ constructor(){ super({ transparent:true }); } }
+
+  class RoadMaterial extends CustomTransparentMaterial{ onBeforeCompile(shader){ super.onBeforeCompile(shader); shader.fragmentShader=shader.fragmentShader.replace("#include <map_fragment>",`
+            diffuseColor = ${COLOR_PALETTE_GLSL.black};
+            float width = 0.06;
+            bool isInCenter = abs(0.5 - vUv.x) < (0.01 + width / 2.0);
+            bool isInRoad = abs(0.5 - vUv.x) < (width / 2.0);
+            if (isInCenter) { diffuseColor = ${COLOR_PALETTE_GLSL.color9}; }
+            if (isInRoad) {
+                diffuseColor = ${COLOR_PALETTE_GLSL.black};
+                diffuseColor.a = 0.8;
+                bool isInLine = (abs(0.5 - vUv.x + width / 6.0) < 0.0003);
+                bool isInDashedLine = (abs(0.5 - vUv.x - width / 6.0) < 0.0003) && (sin(100.0 * vUv.y - 10.0 * uTime) > 0.3);
+                if (isInLine || isInDashedLine) { diffuseColor = ${COLOR_PALETTE_GLSL.color10}; }
+            }`); this.userData.shader=shader; } }
+
+  class SunMaterial extends CustomTransparentMaterial{ onBeforeCompile(shader){ super.onBeforeCompile(shader); shader.fragmentShader=shader.fragmentShader.replace("#include <map_fragment>",`
+            diffuseColor = vec4(0.0);
+            bool isInSun = distance(vUv.xy, vec2(0.5, 0.5)) < 0.5;
+            if (isInSun) {
+                diffuseColor = ${COLOR_PALETTE_GLSL.color1};
+                float delta = 0.2 * (1.0 - vUv.y);
+                diffuseColor += vec4(delta, delta, 0.0, 0.0);
+                bool isInLine = sin(100.0 * vUv.y) * vUv.y > 0.3;
+                if (isInLine) { diffuseColor = ${COLOR_PALETTE_GLSL.color3}; }
+            }`); this.userData.shader=shader; } }
+
+  // ===== Bina malzemeleri (emissive) =====
+  class BuildingMaterialA extends CustomMaterial{ onBeforeCompile(shader){ super.onBeforeCompile(shader);
+    shader.fragmentShader = shader.fragmentShader.replace("#include <map_fragment>", `
+      diffuseColor = ${COLOR_PALETTE_GLSL.black};
+      bool isInWindowA = vUv.y > 0.09 && (sin(31.415 * (vUv.x - 0.05)) > 0.5) && (sin(100.0 * vUv.y) > 0.5);
+      if (isInWindowA) { diffuseColor = ${COLOR_PALETTE_GLSL.color7}; if (vUv.x > 0.4 && vUv.x < 0.6) { diffuseColor = ${COLOR_PALETTE_GLSL.color10}; } }
+    `);
+    shader.fragmentShader = shader.fragmentShader.replace("#include <emissivemap_fragment>", `
+      #include <emissivemap_fragment>
+      float winMaskA = (vUv.y > 0.09 && (sin(31.415 * (vUv.x - 0.05)) > 0.5) && (sin(100.0 * vUv.y) > 0.5)) ? 1.0 : 0.0;
+      vec3  winColA  = ${COLOR_PALETTE_GLSL.color7}.rgb;
+      totalEmissiveRadiance += winMaskA * winColA * 2.4;
+    `); this.userData.shader=shader; } }
+  class BuildingMaterialB extends CustomMaterial{ onBeforeCompile(shader){ super.onBeforeCompile(shader);
+    shader.fragmentShader = shader.fragmentShader.replace("#include <map_fragment>", `
+      diffuseColor = ${COLOR_PALETTE_GLSL.black};
+      bool isInWindowB = vUv.y > 0.1 && vUv.y < 0.5 && (sin(50.0 * 3.1415 * (vUv.x - 0.05)) > -0.8) && (sin(50.0 * vUv.y) > 0.5);
+      if (isInWindowB) { diffuseColor = ${COLOR_PALETTE_GLSL.color1}; if (vUv.y < 0.3) { diffuseColor = ${COLOR_PALETTE_GLSL.color4}; } }
+    `);
+    shader.fragmentShader = shader.fragmentShader.replace("#include <emissivemap_fragment>", `
+      #include <emissivemap_fragment>
+      float winMaskB = (vUv.y > 0.1 && vUv.y < 0.5 && (sin(50.0 * 3.1415 * (vUv.x - 0.05)) > -0.8) && (sin(50.0 * vUv.y) > 0.5)) ? 1.0 : 0.0;
+      vec3  winColB  = (vUv.y < 0.3) ? ${COLOR_PALETTE_GLSL.color4}.rgb : ${COLOR_PALETTE_GLSL.color1}.rgb;
+      totalEmissiveRadiance += winMaskB * winColB * 2.4;
+    `); this.userData.shader=shader; } }
+  class BuildingMaterialC extends CustomMaterial{ onBeforeCompile(shader){ super.onBeforeCompile(shader);
+    shader.fragmentShader = shader.fragmentShader.replace("#include <map_fragment>", `
+      diffuseColor = ${COLOR_PALETTE_GLSL.black};
+      bool isInWindowC = vUv.y > 0.5 && vUv.y < 0.8 && (sin(5.0 * 3.1415 * (vUv.x - 0.05)) > -0.8) && (sin(50.0 * vUv.y) > 0.5);
+      if (isInWindowC) { diffuseColor = ${COLOR_PALETTE_GLSL.color9}; }
+    `);
+    shader.fragmentShader = shader.fragmentShader.replace("#include <emissivemap_fragment>", `
+      #include <emissivemap_fragment>
+      float winMaskC = (vUv.y > 0.5 && vUv.y < 0.8 && (sin(5.0 * 3.1415 * (vUv.x - 0.05)) > -0.8) && (sin(50.0 * vUv.y) > 0.5)) ? 1.0 : 0.0;
+      vec3  winColC  = ${COLOR_PALETTE_GLSL.color9}.rgb;
+      totalEmissiveRadiance += winMaskC * winColC * 2.4;
+    `); this.userData.shader=shader; } }
+  class BuildingMaterialD extends CustomMaterial{ onBeforeCompile(shader){ super.onBeforeCompile(shader);
+    shader.fragmentShader = shader.fragmentShader.replace("#include <map_fragment>", `
+      diffuseColor = ${COLOR_PALETTE_GLSL.black};
+      bool isInWindowD = vUv.y > 0.1 && (sin(50.0 * vUv.y) > -0.8);
+      if (isInWindowD) { diffuseColor = ${COLOR_PALETTE_GLSL.color5}; }
+    `);
+    shader.fragmentShader = shader.fragmentShader.replace("#include <emissivemap_fragment>", `
+      #include <emissivemap_fragment>
+      float winMaskD = (vUv.y > 0.1 && (sin(50.0 * vUv.y) > -0.8)) ? 1.0 : 0.0;
+      vec3  winColD  = ${COLOR_PALETTE_GLSL.color5}.rgb;
+      totalEmissiveRadiance += winMaskD * winColD * 2.4;
+    `); this.userData.shader=shader; } }
+
+  class MaterialsLibrary{ static default=new DefaultMaterial(); static road=new RoadMaterial(); static sun=new SunMaterial(); static mountain=new MountainMaterial(); static car=new CarMaterial(); static wheel=new WheelMaterial(); static light=new LightMaterial(); static buildingA=new BuildingMaterialA(); static buildingB=new BuildingMaterialB(); static buildingC=new BuildingMaterialC(); static buildingD=new BuildingMaterialD(); }
+
+  // ====== OBJECTS ======
+  class Road extends THREE.Group{ constructor(){ super(); const g=new THREE.PlaneGeometry(); const m=MaterialsLibrary.road; const road=new THREE.Mesh(g,m); road.scale.set(200,200,1); road.rotation.set(-Math.PI/2,0,0); if(FLAGS.ENABLE_SHADOWS){ road.receiveShadow=true; } this.add(road); const refl=new THREE.Reflector(new THREE.PlaneGeometry(10,10),{ color:new THREE.Color(0x7f7f7f), textureWidth: window.innerWidth*window.devicePixelRatio, textureHeight: window.innerHeight*window.devicePixelRatio }); refl.position.set(0,-0.1,0); refl.scale.set(200,200,1); refl.rotation.set(-Math.PI/2,0,0); this.add(refl); } }
+
+  class Sun extends THREE.Group{ constructor(){ super(); const g=new THREE.PlaneGeometry(); const m=MaterialsLibrary.sun; const s=new THREE.Mesh(g,m); s.scale.set(50,50,1); this.add(s); } }
+
+  class Mountain extends THREE.Group{ constructor(){ super(); const m=MaterialsLibrary.mountain; const shape=new THREE.Shape(); shape.moveTo(0,0); shape.lineTo(100,0); shape.lineTo(100,50); shape.lineTo(50,10); shape.lineTo(20,15); shape.lineTo(15,5); shape.lineTo(10,10); shape.lineTo(0,0); shape.lineTo(-5,3); shape.lineTo(-10,10); shape.lineTo(-12,8); shape.lineTo(-100,50); shape.lineTo(-100,0); shape.lineTo(0,0); const g=new THREE.ExtrudeGeometry(shape); const mountain=new THREE.Mesh(g,m); this.add(mountain); } }
+
+  // ====== Player Car ======
+  class Car extends THREE.Group{
+    constructor(){
+      super();
+      // Body
+      { const m=MaterialsLibrary.car; const shape=new THREE.Shape();
+        shape.moveTo(0,0); shape.lineTo(4,0); shape.lineTo(3.8,0.3); shape.lineTo(-0.1,0.7); shape.lineTo(0,0);
+        const g=new THREE.ExtrudeGeometry(shape,{ depth:1.5, bevelThickness:0.2 });
+        const body=new THREE.Mesh(g,m); body.position.set(0,0.3,0); this.add(body); }
+      // Roof
+      { const m=MaterialsLibrary.car; const g=new THREE.CylinderGeometry(0.6,1.2,0.5,4);
+        const roof=new THREE.Mesh(g,m); roof.position.set(1.5,1,0.8); roof.rotation.set(0,Math.PI/4,0); this.add(roof); }
+      // Lamps + fog
+      { const stopMat = MaterialsLibrary.light.clone();
+        stopMat.color.set(0xff2a10); stopMat.emissive.set(0xff2a10); stopMat.emissiveIntensity=1.8;
+        const addLamp=(x,y,z,R,T)=>{ const outer=new THREE.Mesh(new THREE.TorusGeometry(R,T,20,48),stopMat); outer.rotation.y=Math.PI/2; outer.position.set(x,y,z); this.add(outer);
+          const inner=new THREE.Mesh(new THREE.TorusGeometry(R*0.72,T*0.60,16,40),stopMat); inner.rotation.y=Math.PI/2; inner.position.set(x,y,z); this.add(inner); };
+        const X=-0.17, Y=0.86;
+        addLamp(X,Y,0.00,0.13,0.022); addLamp(X,Y,0.32,0.11,0.020);
+        addLamp(X,Y,1.20,0.11,0.020); addLamp(X,Y,1.52,0.13,0.022);
+        const fog=new THREE.Mesh(new THREE.BoxGeometry(0.26,0.06,0.02),stopMat); fog.position.set(-0.10,0.42,0.76); this.add(fog); }
+      // Spoiler
+      { const metal=new THREE.MeshStandardMaterial({ color:0x222222, metalness:0.85, roughness:0.25 });
+        const wingSpan=1.85, wingDepth=0.22, wingThick=0.06; const wingY=1.30, wingX=0.10, wingZ=0.76;
+        const wing=new THREE.Mesh(new THREE.BoxGeometry(wingDepth,wingThick,wingSpan),metal); wing.position.set(wingX,wingY,wingZ); this.add(wing);
+        const plateGeo=new THREE.BoxGeometry(0.20,0.32,0.02);
+        const plateLft=new THREE.Mesh(plateGeo,metal); plateLft.position.set(wingX-0.04,wingY,wingZ-wingSpan/2+0.03); this.add(plateLft);
+        const plateRgt=plateLft.clone(); plateRgt.position.z=wingZ+wingSpan/2-0.03; this.add(plateRgt);
+        const legH=0.50; const legGeo=new THREE.BoxGeometry(0.10,legH,0.08); const legY=wingY-(wingThick/2)-(legH/2);
+        const legLft=new THREE.Mesh(legGeo,metal); legLft.position.set(wingX-0.12,legY,wingZ-0.42); this.add(legLft);
+        const legRgt=legLft.clone(); legRgt.position.z=wingZ+0.42; this.add(legRgt); }
+      // Quad exhaust + flames
+      { const pipeMat=new THREE.MeshStandardMaterial({ color:0xffffff, metalness:0.95, roughness:0.28 });
+        pipeMat.onBeforeCompile=(shader)=>{ shader.uniforms.gradA={value:new THREE.Color(0x2b2b2b)};
+          shader.uniforms.gradB={value:new THREE.Color(0x9a9a9a)};
+          shader.vertexShader=shader.vertexShader.replace('#include <uv_pars_vertex>','varying vec2 vUv;').replace('#include <uv_vertex>','vUv = uv;');
+          shader.fragmentShader=shader.fragmentShader.replace('#include <color_fragment>',`
+            #include <color_fragment>
+            vec3 grad = mix( gradA.rgb, gradB.rgb, vUv.y );
+            diffuseColor.rgb = grad;`); };
+        const tipOrange=MaterialsLibrary.light.clone(); tipOrange.color.set(0xff7a3a); tipOrange.emissive.set(0xff7a3a); tipOrange.emissiveIntensity=0.06;
+        const tipBlue=MaterialsLibrary.light.clone(); tipBlue.color.set(0x79d4ff); tipBlue.emissive.set(0x79d4ff); tipBlue.emissiveIntensity=0.04;
+        const flameOMat=new THREE.MeshBasicMaterial({ color:0xff7a3a, transparent:true, opacity:0, blending:THREE.AdditiveBlending, depthWrite:false });
+        const flameBMat=new THREE.MeshBasicMaterial({ color:0x4cc9f0, transparent:true, opacity:0, blending:THREE.AdditiveBlending, depthWrite:false });
+        const rOuter=0.085, len=0.12; const x=-0.22, y=0.34; const zs=[0.10,0.28,1.24,1.42];
+        const exhaust=[]; const makePipe=(z)=>{ const pipe=new THREE.Mesh(new THREE.CylinderGeometry(rOuter,rOuter,len,32),pipeMat);
+            pipe.rotation.z=Math.PI/2; pipe.position.set(x,y,z); this.add(pipe);
+            const tipO=new THREE.Mesh(new THREE.CircleGeometry(rOuter*0.72,24),tipOrange); tipO.rotation.y=-Math.PI/2; tipO.position.set(x-len/2-0.001,y,z); this.add(tipO);
+            const tipB=new THREE.Mesh(new THREE.CircleGeometry(rOuter*0.72,24),tipBlue); tipB.rotation.y=-Math.PI/2; tipB.position.set(x-len/2-0.001,y,z); tipB.visible=false; this.add(tipB);
+            const flameO=new THREE.Mesh(new THREE.ConeGeometry(rOuter*0.85,len*0.6,14,1,true),flameOMat); flameO.rotation.z=-Math.PI/2; flameO.position.set(x-len/2-0.02,y,z); this.add(flameO);
+            const flameB=new THREE.Mesh(new THREE.ConeGeometry(rOuter*0.85,len*0.6,14,1,true),flameBMat); flameB.rotation.z=-Math.PI/2; flameB.position.set(x-len/2-0.02,y,z); this.add(flameB);
+            exhaust.push({ tipO,tipB,flameO,flameB, state:{ active:false, t0:0, duration:0, color:'orange' } }); };
+        zs.forEach(makePipe); this.userData.exhaust=exhaust; }
+      // Wheels
+      { const m=MaterialsLibrary.wheel; const g=new THREE.CylinderGeometry(1,1,1,12);
+        const w1=new THREE.Mesh(g,m); w1.scale.set(0.33,2,0.33); w1.position.set(3,0.33,0.75); w1.rotation.set(Math.PI/2,0,0); this.add(w1);
+        const w2=new THREE.Mesh(g,m); w2.scale.set(0.33,2,0.33); w2.position.set(0.7,0.33,0.75); w2.rotation.set(Math.PI/2,0,0); this.add(w2); }
+    }
+  }
+
+  // ====== NPC ======
+  class ParkedCar extends THREE.Group{
+    constructor(){
+      super();
+      const bodyMat = MaterialsLibrary.car.clone(); bodyMat.color.set(0x1a1a1a); bodyMat.roughness = 0.6; bodyMat.metalness = 0.2;
+      const wheelMat = MaterialsLibrary.wheel;
+      const body = new THREE.Mesh(new THREE.BoxGeometry(1.22,0.44,2.18), bodyMat); body.position.y = 0.44; this.add(body);
+      const roof = new THREE.Mesh(new THREE.BoxGeometry(0.86,0.32,0.96), bodyMat); roof.position.set(0,0.84,-0.18); this.add(roof);
+      const wg = new THREE.CylinderGeometry(0.22,0.22,0.26,14); wg.rotateZ(Math.PI/2);
+      const mkW=(x,z)=>{ const w=new THREE.Mesh(wg, wheelMat); w.position.set(x,0.22,z); return w; };
+      this.add(mkW( 0.52,  0.74)); this.add(mkW(-0.52,  0.74)); this.add(mkW( 0.52, -0.74)); this.add(mkW(-0.52, -0.74));
+      const stop = new THREE.Mesh(new THREE.BoxGeometry(0.12,0.08,0.02), new THREE.MeshBasicMaterial({color:0xff3a2a})); stop.position.set(0,0.62,1.10); this.add(stop);
+      const headMat = new THREE.MeshStandardMaterial({ color:0xfff6e5, emissive:0xfff6e5, emissiveIntensity:1.15, roughness:0.25, metalness:0.0 });
+      const headL = new THREE.Mesh(new THREE.BoxGeometry(0.18,0.14,0.03), headMat); headL.position.set(-0.36,0.62,-1.06); this.add(headL);
+      const headR = headL.clone(); headR.position.x = +0.36; this.add(headR);
+      const grill = new THREE.Mesh(new THREE.BoxGeometry(0.42,0.10,0.03), new THREE.MeshStandardMaterial({ color:0x202020, metalness:0.5, roughness:0.5 })); grill.position.set(0,0.52,-1.07); this.add(grill);
+      this.rotation.y = 0;
+      if(FLAGS.ENABLE_SHADOWS){ this.traverse(o=>{ if(o.isMesh){ o.castShadow = o.receiveShadow = true; } }); }
+      // Araç başına ufak hız faktörü (örüntüyü kır)
+      this.userData.vFactor = 0.88 + Math.random()*0.30; // 0.88–1.18
+    }
+  }
+
+  // Poisson zamanlama için üstel örnekleyici
+  function sampleExp(mean){ return -Math.log(1-Math.random()) * mean; }
+
+  class ParkedTraffic extends THREE.Group{
+    constructor(laneX, isLeft, laneId){
+      super();
+      this._laneX = laneX; this._isLeft = !!isLeft;
+      this._laneId = laneId || 'X';
+      this._cars=[]; this._enabled=true;
+
+      this._spawnMin = PARKED_SPAWN_MIN_SEC;
+      this._spawnMean = PARKED_SPAWN_MEAN + (Math.random()*0.8 - 0.4);
+      this._burstChance = PARKED_BURST_CHANCE;
+      this._maxCars = PARKED_MAX;
+
+      this._policy = null; // { canSpawn(laneId,z), getElapsed() }
+      this._nextSpawnAt = (performance.now()/1000) + sampleExp(this._spawnMean);
+    }
+    setSpawnPolicy(p){ this._policy = p; }
+    setEnabled(b){ this._enabled = !!b; }
+    clearAll(){ for(let i=this._cars.length-1;i>=0;i--){ this.remove(this._cars[i]); } this._cars.length=0; }
+
+    _spawnAt(zBase){
+      const c = new ParkedCar();
+      const jitter = (Math.random()*0.14) - 0.12;
+      const baseX = clampLaneX(this._laneX + jitter, this._isLeft);
+      c.position.set(baseX, 0, zBase);
+      c.rotation.y = 0;
+      this._cars.push(c); this.add(c);
+      c.userData._wasAhead = true;      // ilk anda oyuncunun önündedir (z > playerZ)
+      c.userData._passedBoost = false;  // boost'lu geçiş henüz sayılmadı
+
+      if(FLAGS.ENABLE_SHADOWS){ c.traverse(o=>{ if(o.isMesh){ o.castShadow=o.receiveShadow=true; } }); }
+    }
+
+    _trySpawn(now){
+      if(this._cars.length >= this._maxCars) return;
+
+      const z0 = 190 + Math.random()*30;
+
+      // ATOMİK: önce rezervasyon, sonra ikincil doğrulama
+      if(this._policy){
+        if(!this._policy.reserve(this._laneId, z0) || !this._policy.canSpawn(this._laneId, z0)){
+          this._nextSpawnAt = now + 0.6 + Math.random()*0.8; // kısa ertele
+          return;
+        }
+      }
+      this._spawnAt(z0);
+
+      // Burst denemesi (ikinci araç) – yine rezervasyon + doğrulama
+      if(Math.random() < this._burstChance && this._cars.length < this._maxCars){
+        const z1 = z0 + PARKED_BURST_GAP + Math.random()*6.0;
+        if(this._policy){
+          if(this._policy.reserve(this._laneId, z1) && this._policy.canSpawn(this._laneId, z1)){
+            this._spawnAt(z1);
+          }
+          // aksi halde burst'i sessizce pas geç
+        } else {
+          this._spawnAt(z1);
+        }
+      }
+
+      this._nextSpawnAt = now + sampleExp(this._spawnMean);
+    }
+
+    update(speed=1){
+      if(this._enabled){
+        const now = performance.now()/1000;
+        if(now >= this._nextSpawnAt){
+          this._trySpawn(now);
+        }
+      }
+      for(let i=this._cars.length-1;i>=0;i--){
+        const c=this._cars[i];
+        const vf = c.userData.vFactor || 1.0;
+        c.position.z -= 0.5 * speed * vf;
+        if(c.position.z < 0){ this.remove(c); this._cars.splice(i,1); }
+      }
+    }
+    getCars(){ return this._cars; }
+  }
+
+  class ParkedTrafficMiddle extends ParkedTraffic{
+    constructor(laneX){ super(laneX, false, 'C'); }
+    _spawnAt(zBase){
+      const c = new ParkedCar();
+      const jitter = (Math.random()*0.30) - 0.15;
+      const baseX = this._laneX + jitter;
+      c.position.set(baseX, 0, zBase);
+      c.rotation.y = 0;
+      this._cars.push(c); this.add(c);
+      c.userData._wasAhead = true;      // ilk anda oyuncunun önündedir (z > playerZ)
+      c.userData._passedBoost = false;  // boost'lu geçiş henüz sayılmadı
+      if(FLAGS.ENABLE_SHADOWS){ c.traverse(o=>{ if(o.isMesh){ o.castShadow=o.receiveShadow=true; } }); }
+      c.userData.vFactor = 0.9 + Math.random()*0.28;
+    }
+  }
+
+
+  // Buildings & Stars (aynı)
+  class BuildingA extends THREE.Group{ constructor(){ super(); const m=MaterialsLibrary.buildingA; const g=new THREE.BoxGeometry(); const b=new THREE.Mesh(g,m); b.scale.set(10,15,10); b.position.set(0,-3,0); if(FLAGS.ENABLE_SHADOWS){ b.castShadow=true; } this.add(b); const rg=new THREE.ConeGeometry(5,15,7); const r=new THREE.Mesh(rg,m); r.position.set(0,5,0); this.add(r); } }
+  class BuildingB extends THREE.Group{ constructor(){ super(); const m=MaterialsLibrary.buildingB; const g=new THREE.CylinderGeometry(); const b=new THREE.Mesh(g,m); b.scale.set(5,15,5); b.position.set(0,-3,0); if(FLAGS.ENABLE_SHADOWS){ b.castShadow=true; } this.add(b); const rg=new THREE.SphereGeometry(7); const r=new THREE.Mesh(rg,m); r.position.set(0,2,0); r.rotation.set(0,0.3,0); this.add(r); } }
+  class BuildingC extends THREE.Group{ constructor(){ super(); const m=MaterialsLibrary.buildingC; const g=new THREE.BoxGeometry(); const b=new THREE.Mesh(g,m); b.scale.set(5,5,5); b.position.set(0,-8,0); if(FLAGS.ENABLE_SHADOWS){ b.castShadow=true; } this.add(b); } }
+  class BuildingD extends THREE.Group{ constructor(){ super(); const m=MaterialsLibrary.buildingD; const g=new THREE.ConeGeometry(1,1,3); const b=new THREE.Mesh(g,m); b.scale.set(5,20,5); b.rotation.set(0,1,0); if(FLAGS.ENABLE_SHADOWS){ b.castShadow=true; } this.add(b); } }
+
+  class City extends THREE.Group{
+    static #getRandomBuilding(){ const c=Math.random(); if(c<0.2) return new BuildingA(); if(c<0.3) return new BuildingB(); if(c<0.9) return new BuildingC(); return new BuildingD(); }
+    constructor(){ super(); for(let z=0; z<200; z+=20){ for(let x=70; x>=10; x-=20){ this.#initBuilding(x,z); } for(let x=120; x<=180; x+=20){ this.#initBuilding(x,z); } } }
+    #initBuilding(x,z){ const b=City.#getRandomBuilding(); b.position.set(x,20/2,z); this.add(b); }
+    update(speed=1){ this.children.forEach((b)=>{ const {x,z}=b.position; let newZ=z-0.5*speed; if(newZ<0){ newZ=200; } const y = newZ <= 150 ? 10 : 10 + 20 * ((150 - newZ) / 50); b.position.set(x,y,newZ); }); }
+  }
+
+  class Stars extends THREE.Group{ constructor(){ super(); const g=new THREE.SphereGeometry(); const m=MaterialsLibrary.light; for(let x=-300; x<300; x+=30){ for(let y=0; y<300; y+=30){ const s=new THREE.Mesh(g,m.clone()); const dx=25*Math.random(); const dy=25*Math.random(); const sc=Math.random(); s.scale.set(sc,sc,sc); s.position.set(x+dx,y+dy,0); this.add(s); } } } setOpacity(a){ this.children.forEach(m=>{ if(m.material && m.material.transparent){ m.material.opacity = a; } }); } }
+
+  class ObjectsLibrary{
+    static road=new Road();
+    static sun=new Sun();
+    static mountain=new Mountain();
+    static car=new Car();
+    static city=new City();
+    static stars=new Stars();
+    static parkedLeft   = new ParkedTraffic(PARKED_LANE_X_LEFT,  true,  'L');
+    static parkedRight  = new ParkedTraffic(PARKED_LANE_X_RIGHT, false, 'R');
+    static parkedCenter = new ParkedTrafficMiddle(PARKED_LANE_X_MIDDLE);
+
+  }
+
+  // ====== WORLD ======
+class SandboxWorld extends THREE.Group{
+  #saved;
+  constructor(onCrashCb, onLaneChangeCb, onMakasCb, onBoostOvertakeCb){
+      super();
+      this._carTargetX = CAR_BASE_X;
+      this._onCrashCb = onCrashCb || null;
+      this._onLaneChange = onLaneChangeCb || null;
+      this._onMakas = onMakasCb || null;
+      this._lastLaneChangeTime = 0;
+      this._lane = 0;
+      this._lastMakasTime = 0;
+      this._difficulty = 1.0;
+      this._crashLock = false;        // ÇARP. KİLİDİ – yeni dünyada temiz
+      this._boost = false; this._lastBurst = 0; this._nextBurstDelay = 0.30;
+      this._tmpBoxPlayer = new THREE.Box3();
+      this._tmpBoxNPC = new THREE.Box3();
+      this._roundStartEpoch = performance.now()/1000;  // NEW // Round başlangıç zamanı
+      this._spawnWaves = []; // { z:number, lanes:Set<'L'|'C'|'R'>, t:number } araç spawn
+      this._onBoostOvertake = onBoostOvertakeCb || null;  // NEW // boost ile geçiş bildirimi
+      this._frozenElapsedSec = 0; // kaza anında yazılacak
+      this._boostLevel = 0;         // 0..1 arası yumuşak seviye
+      this._lastT = performance.now()/1000;  // dt hesabı için
+
+
+
+      this.#initObjects();
+      this.#initLights();
+      this.#initHeadlights();
+    }
+
+        _getElapsed(){
+      return (performance.now()/1000) - this._roundStartEpoch;
+    }
+    _hasCarNear(laneObj, z, win){
+      const arr = laneObj.getCars();
+      for(const c of arr){ if(Math.abs(c.position.z - z) < win) return true; }
+      return false;
+    }
+    _canSpawn(laneId, z){
+      // Erken oyunda pencere daha geniş; hep en az 1 şerit boş bırak.
+      const elapsed = this._getElapsed();
+      const win = elapsed < 30 ? 22 : (elapsed < 60 ? 18 : 14);
+
+      
+
+      let occ = 0;
+      const L=this.#saved.parkedLeft, C=this.#saved.parkedCenter, R=this.#saved.parkedRight;
+      if(laneId!=='L' && this._hasCarNear(L, z, win)) occ++;
+      if(laneId!=='C' && this._hasCarNear(C, z, win)) occ++;
+      if(laneId!=='R' && this._hasCarNear(R, z, win)) occ++;
+
+      // en fazla 2 şerit dolu olabilir (yani “duvar” yasak)
+      return occ <= 1;
+    }
+
+        // === Boost basılıyken yanından geçiş tespiti (+3) ===
+    _checkBoostOvertakes(){
+      if(!this._boost) return; // boost yoksa bakmaya gerek yok
+
+      const player = this.#saved.car;
+      const px = player.position.x;
+      const pz = player.position.z;
+      const pLane = this._laneFromX(px);
+
+      const lanes = [this.#saved.parkedLeft, this.#saved.parkedCenter, this.#saved.parkedRight];
+      for(const lane of lanes){
+        const arr = lane.getCars();
+        for(const c of arr){
+          // crossing: önce öndeydi (z>pz), şimdi geride (z<=pz)
+          const aheadNow = (c.position.z > pz);
+
+          if(c.userData._wasAhead && !aheadNow && !c.userData._passedBoost){
+            const cLane = this._laneFromX(c.position.x);
+            const isNear = Math.abs(pLane - cLane) <= 1; // aynı ya da komşu şerit
+            if(isNear){
+              c.userData._passedBoost = true;
+              if(this._onBoostOvertake){ this._onBoostOvertake(); }
+            } else {
+              c.userData._passedBoost = true; // uzaksa da tekrar tetiklenmesin
+            }
+          }
+
+          // bir sonraki frame için önce/sonra takibi
+          c.userData._wasAhead = aheadNow;
+        }
+      }
+    }
+
+
+    // === [YENİ] Duvar bandı: süreye göre z yakınlık penceresi ===
+    _getWallBand(){
+      const e = this._getElapsed();
+      // 0–30 sn daha geniş, 30–60 sn orta, 60+ sn dar
+      if(e < 30) return 26; // WALL_BAND_EARLY
+      if(e < 60) return 20; // WALL_BAND_MID
+      return 16;            // WALL_BAND_LATE
+    }
+
+    // === [YENİ] Atomik rezervasyon: aynı z "dalga"sında en fazla 2 şerit ===
+    _reserveSpawn(laneId, z){
+      const now  = performance.now()/1000;
+      const band = this._getWallBand();
+
+      // Eski dalgaları temizle (8 sn pencere)
+      this._spawnWaves = this._spawnWaves.filter(w => (now - w.t) < 8.0);
+
+      // Yakındaki dalgayı bul
+      let wave = this._spawnWaves.find(w => Math.abs(w.z - z) <= band);
+
+      // Yoksa yeni dalga aç
+      if(!wave){
+        wave = { z, t: now, lanes: new Set() };
+        this._spawnWaves.push(wave);
+      }
+
+      // Aynı dalgada en fazla 2 farklı şerit
+      if(!wave.lanes.has(laneId) && wave.lanes.size >= 2){
+        return false; // üçüncü şerit reddedilir
+      }
+
+      // Bu şerit için rezervasyon tamam
+      wave.lanes.add(laneId);
+      return true;
+    }
+
+
+    #initObjects(){
+      const {road,car,sun,city,mountain,stars, parkedLeft, parkedRight, parkedCenter}=ObjectsLibrary;
+      road.position.set(0,0,100);
+      sun.position.set(0,-15,200); sun.rotation.set(-Math.PI,0,0);
+      city.position.set(-100,0,0);
+      mountain.position.set(0,0,200);
+      car.position.set(CAR_BASE_X,0,10); car.rotation.set(0,-Math.PI/2,0);
+      stars.position.set(0,0,250);
+      this.add(road,sun,car,city,mountain,stars, parkedLeft, parkedRight, parkedCenter);
+      this.#saved={ car, city, sun, stars, parkedLeft, parkedRight, parkedCenter };
+      this._lane = this._laneFromX(car.position.x);
+      this.add(road,sun,car,city,mountain,stars, parkedLeft, parkedRight, parkedCenter);
+      this.#saved={ car, city, sun, stars, parkedLeft, parkedRight, parkedCenter };
+      this._lane = this._laneFromX(car.position.x);
+      
+            // NEW: spawn politikası
+      const policy = {
+        reserve : (laneId, z) => this._reserveSpawn(laneId, z),
+        canSpawn: (laneId, z) => this._canSpawn(laneId, z)
+      };
+      parkedLeft.setSpawnPolicy(policy);
+      parkedCenter.setSpawnPolicy(policy);
+      parkedRight.setSpawnPolicy(policy);
+    }
+    
+    #initLights(){
+      const ambient = new THREE.AmbientLight(COLOR_PALETTE.color3, NIGHT_AMBIENT); this.add(ambient);
+      const point = new THREE.PointLight(COLOR_PALETTE.color1, NIGHT_POINT, 300, 0.5); point.position.set(0,30,180);
+      if(FLAGS.ENABLE_SHADOWS){ point.castShadow=true; } this.add(point);
+      this._ambient = ambient; this._point = point;
+    }
+    #initHeadlights(){
+      const mkLight = (xOffset)=>{
+        const color = 0xfff6e5;
+        const light = new THREE.SpotLight(color, 26, 64, Math.PI*0.10, 0.35, 2.2);
+        light.castShadow = !!FLAGS.ENABLE_SHADOWS;
+        light.shadow.mapSize.set(1024,1024);
+        light.shadow.bias = -0.00008;
+        const target = new THREE.Object3D(); this.add(target); light.target = target;
+        return { light, target, xOffset, base:{ intensity: light.intensity, distance: light.distance, angle: light.angle } };
+      };
+      const left = mkLight(-0.45);
+      const right = mkLight(+0.45); right.light.color.set(0xeef8ff);
+      const group = new THREE.Group(); group.add(left.light, right.light); this.add(group);
+      this._headlights = { group, left, right };
+    }
+
+    setTrafficEnabled(b){
+      this.#saved.parkedLeft.setEnabled(b);
+      this.#saved.parkedCenter.setEnabled(b);
+      this.#saved.parkedRight.setEnabled(b);
+    }
+    clearTraffic(){
+      this.#saved.parkedLeft.clearAll();
+      this.#saved.parkedCenter.clearAll();
+      this.#saved.parkedRight.clearAll();
+    }
+    handleCrash(){
+      if(this._crashLock) return;
+      this._crashLock = true;
+      // Trafiği kapat + temizle, boost kapat – fakat oyuncu akmaya devam eder
+      this.setTrafficEnabled(false);
+      this.clearTraffic();
+      this._boost = false;
+    }
+
+    getCarX(){ return this.#saved.car.position.x; }
+    isBoosting(){ 
+      return !!this._boost; }
+      getBoostLevel(){ return this._boostLevel; }
+
+    setBoost(active){ this._boost = active; }
+    triggerExhaustBurst(){
+      const ex = this.#saved.car.userData.exhaust; if(!ex) return;
+      const now = performance.now()/1000;
+      ex.forEach(p=>{
+        p.state.active = true; p.state.t0 = now; p.state.duration = 0.09 + Math.random()*0.15; p.state.color = Math.random() < 0.6 ? 'orange' : 'blue';
+        p.tipO.visible = (p.state.color === 'orange'); p.tipB.visible = (p.state.color === 'blue');
+        p.flameO.material.opacity = 0.0; p.flameB.material.opacity = 0.0;
+      });
+      this._lastBurst = now;
+    }
+
+    enableHardMode(){
+      if(this._difficulty >= 1.15) return;
+      this._difficulty = 1.15;
+
+      const lanes=[this.#saved.parkedLeft,this.#saved.parkedCenter,this.#saved.parkedRight];
+      lanes.forEach(L=>{
+        // Daha sık spawn
+        L._spawnMean = Math.max(1.3, L._spawnMean * 0.65);
+        // Daha çok araç aynı anda
+        L._maxCars = Math.min(6, (L._maxCars || PARKED_MAX) + 2);
+        // Daha sık burst
+        L._burstChance = Math.min(0.45, (L._burstChance || PARKED_BURST_CHANCE) + 0.12);
+      });
+    }
+
+
+    _laneFromX(x){
+      const midLeft  = CAR_BASE_X - CAR_LANE_AMPLITUDE/2;
+      const midRight = CAR_BASE_X + CAR_LANE_AMPLITUDE/2;
+      if(x < midLeft) return -1;
+      if(x > midRight) return +1;
+      return 0;
+    }
+
+    _checkCollision(){
+      if (this._crashLock) return;
+
+      const player = this.#saved.car;
+      this._tmpBoxPlayer.setFromObject(player);
+      shrinkBox(this._tmpBoxPlayer, HITBOX_PLAYER);
+
+      const lanes = [
+        this.#saved.parkedLeft.getCars(),
+        this.#saved.parkedCenter.getCars(),
+        this.#saved.parkedRight.getCars()
+      ];
+
+      for (const arr of lanes){
+        for (const npc of arr){
+          this._tmpBoxNPC.setFromObject(npc);
+          shrinkBox(this._tmpBoxNPC, HITBOX_NPC);
+
+          if (this._tmpBoxPlayer.intersectsBox(this._tmpBoxNPC)){
+            this.handleCrash();
+            if (typeof this._onCrashCb === 'function') this._onCrashCb();
+            return;
+          }
+        }
+      }
+    }
+
+
+
+    _checkMakas(){
+      const now = performance.now()/1000;
+      if((now - this._lastMakasTime) < 1.0) return;
+      const player = this.#saved.car;
+      const px = player.position.x, pz = player.position.z;
+      const zTol = 1.1, xGap = 0.50;
+      const all = [ ...this.#saved.parkedLeft.getCars(), ...this.#saved.parkedCenter.getCars(), ...this.#saved.parkedRight.getCars() ];
+      let hasLeft=false, hasRight=false;
+      for(const c of all){
+        const dz = Math.abs(c.position.z - pz);
+        if(dz <= zTol){
+          if(c.position.x <= px - xGap) hasLeft = true;
+          if(c.position.x >= px + xGap) hasRight = true;
+          if(hasLeft && hasRight) break;
+        }
+      }
+      if(hasLeft && hasRight){
+        this._lastMakasTime = now;
+        if(typeof this._onMakas === 'function'){ this._onMakas(); }
+      }
+    }
+
+    // Dünya update
+    update(){
+      const t = performance.now()/1000;
+      const dt = Math.max(0, t - (this._lastT ?? t));
+      this._lastT = t;
+
+      // Ramp: boost açıkken yavaşça 1'e, kapalıyken yavaşça 0'a yaklaş
+      if (this._boost) {
+        this._boostLevel = Math.min(1, this._boostLevel + dt / BOOST_RAMP_UP_SEC);
+      } else {
+        this._boostLevel = Math.max(0, this._boostLevel - dt / BOOST_RAMP_DOWN_SEC);
+      }
+
+
+
+      const car = this.#saved.car;
+
+      // X konum/tilt
+      const desired = this._carTargetX;
+      car.position.x += (desired - car.position.x) * CAR_LERP;
+      car.position.x += 0.02 * Math.sin(t*2.0);
+      const steer = THREE.MathUtils.clamp((desired - car.position.x), -1, 1);
+      car.rotation.z = THREE.MathUtils.lerp(car.rotation.z, -CAR_BANK_MAX * steer, 0.15);
+
+      // Hızlar
+      // Eski: const speedMult = this._boost ? 2.2 : 1.0;
+      const speedMult = 1.0 + (BOOST_TARGET_MULT - 1.0) * this._boostLevel;
+      this.#saved.city.update(CITY_BASE_SPEED * speedMult * this._difficulty);
+      this.#saved.parkedLeft.update(LANE_SPEED.LEFT   * speedMult * this._difficulty);
+      this.#saved.parkedCenter.update(LANE_SPEED.CENTER * speedMult * this._difficulty);
+      this.#saved.parkedRight.update(LANE_SPEED.RIGHT * speedMult * this._difficulty);
+      this._checkBoostOvertakes();
+
+
+      // Far hedefleri
+      if(this._headlights){
+        const { left, right } = this._headlights;
+        const baseX = car.position.x; const baseY = 0.62; const baseZ = car.position.z + 1.15; const aheadZ = car.position.z + 22;
+        left.light.position.set(baseX + left.xOffset, baseY, baseZ);
+        right.light.position.set(baseX + right.xOffset, baseY, baseZ);
+        left.target.position.set(baseX + left.xOffset * 0.6, baseY - 0.06, aheadZ);
+        right.target.position.set(baseX + right.xOffset * 0.6, baseY - 0.06, aheadZ);
+        left.light.target.updateMatrixWorld(); right.light.target.updateMatrixWorld();
+      }
+
+      // Boost sırasında rastgele alev patlamaları
+      if(this._boost){
+        if( (t - this._lastBurst) > this._nextBurstDelay ){
+          this.triggerExhaustBurst();
+          this._nextBurstDelay = 0.18 + Math.random()*0.45;
+        }
+      }
+
+      // Alev animasyonu
+      const exhaust = car.userData.exhaust || [];
+      for(const p of exhaust){
+        const s = p.state; if(!s.active) continue;
+        const u = (t - s.t0) / s.duration;
+        if(u >= 1){
+          s.active = false; p.flameO.material.opacity = 0; p.flameB.material.opacity = 0;
+          p.tipO.material.emissiveIntensity = 0.06; p.tipB.material.emissiveIntensity = 0.04;
+          p.tipO.visible = true; p.tipB.visible = false;
+        } else {
+          const e = Math.sin(u*Math.PI);
+          const flame = s.color==='orange' ? p.flameO : p.flameB;
+          const tip   = s.color==='orange' ? p.tipO   : p.tipB;
+          flame.material.opacity = 0.85 * e;
+          flame.scale.set(0.9 + 0.4*e, 0.8 + 0.5*e, 0.8 + 0.5*e);
+          tip.material.emissiveIntensity = (s.color==='orange'?1.2:1.0)*e + (s.color==='orange'?0.06:0.04);
+        }
+      }
+
+      // Şerit değişim / Makas / Çarpışma
+      const lane = this._laneFromX(car.position.x);
+      if(lane !== this._lane){
+        if((t - this._lastLaneChangeTime) > 0.35){
+          this._lane = lane;
+          this._lastLaneChangeTime = t;
+          if(typeof this._onLaneChange === 'function'){ this._onLaneChange(); }
+        }
+      }
+      this._checkMakas();
+      this._checkCollision();
+    }
+
+    setSunriseProgress(p){
+      const clamped = Math.max(0, Math.min(1, p));
+      const sunY = -15 + (25 * clamped);
+      this.#saved.sun.position.y = sunY;
+      this.#saved.stars.setOpacity(1.0 - clamped);
+      this._ambient.intensity = NIGHT_AMBIENT + (DAY_AMBIENT - NIGHT_AMBIENT) * clamped;
+      this._point.intensity   = NIGHT_POINT + (DAY_POINT   - NIGHT_POINT)   * clamped;
+      if(this._headlights){
+        const f = 1 - THREE.MathUtils.smoothstep(clamped, 0.12, 0.80);
+        const L = this._headlights.left.light; const R = this._headlights.right.light;
+        L.intensity = this._headlights.left.base.intensity * f; R.intensity = this._headlights.right.base.intensity * f;
+        L.distance  = this._headlights.left.base.distance  * (0.6 + 0.4*f);
+        R.distance  = this._headlights.right.base.distance * (0.6 + 0.4*f);
+        const vis = f > 0.02; L.visible = vis; R.visible = vis;
+      }
+    }
+    setCarLaneTarget(x){
+      const min = CAR_BASE_X - CAR_LANE_AMPLITUDE;
+      const max = CAR_BASE_X + CAR_LANE_AMPLITUDE;
+      this._carTargetX = Math.min(max, Math.max(min, x));
+    }
+  }
+
+  // ====== UI helpers ======
+  function showToast(msg, opts={}){
+    const c = document.getElementById('toasts'); if(!c) return;
+    const el = document.createElement('div'); el.className='toast';
+    if(opts.html){ el.innerHTML = msg; } else { el.textContent = msg; }
+    c.appendChild(el);
+    requestAnimationFrame(()=> el.classList.add('show'));
+    setTimeout(()=>{ el.classList.remove('show'); setTimeout(()=> el.remove(), 250); }, 1200);
+  }
+
+  function showPointToast(label, delta){
+  const html = `${label} <span class="points">+${delta} Puan</span>`;
+  showToast(html, { html:true });
+}
+
+
+  // ====== APP / GAME LOOP ======
+  class FullScreen3DExample{
+    static CSS_ROOT="full-screen-3d-example"; static CSS_ROOT_LOADED_VARIANT="-loaded";
+    #root; #frameRequestId; #scene; #world; #camera; #cameraData; #renderer; #composer; #startTime; #noisePass;
+    constructor(root){
+      this.#root=root; this.#root.classList.add(FullScreen3DExample.CSS_ROOT);
+
+      // Yardım & Ayarlar
+      this._helpBtn    = document.getElementById('helpBtn');
+      this._settingsBtn= document.getElementById('settingsBtn');
+      this._helpPanel  = document.getElementById('helpPanel');
+
+      // Panel toggle'ları
+      this._helpBtn.addEventListener('click', ()=>{
+        // Yardımı aç/kapat; açılırsa ses panelini gizle
+        this._helpPanel.classList.toggle('hidden');
+        if(!this._helpPanel.classList.contains('hidden')){
+          this._audioPanel?.classList.add('hidden');
+        }
+      });
+      this._settingsBtn.addEventListener('click', ()=>{
+        // Ses panelini aç/kapat; açılırsa yardım panelini gizle
+        if(this._audioPanel){
+          const willOpen = this._audioPanel.classList.contains('hidden');
+          this._audioPanel.classList.toggle('hidden');
+          if(willOpen){ this._helpPanel?.classList.add('hidden'); }
+        }
+      });
+
+      // ESC ile kapat
+      document.addEventListener('keydown', (ev)=>{
+        if(ev.key==='Escape'){
+          this._helpPanel?.classList.add('hidden');
+          this._audioPanel?.classList.add('hidden');
+        }
+      });
+
+            // Egzoz patlatma (boost uzun basılı)
+      this._boost = new Audio("https://cdn.prod.website-files.com/67fb1cd83af51c4fe96dacb2/69003b7a671ad7cf11b650a9_boost_speed.MP3"); // patlatma dosyası
+      this._boost.loop = true;
+      this._boost.preload = "auto";
+      this._boost.volume = 0.8;
+      this._boostStarted = false;
+
+      // Boost basılı takip
+      this._boostHoldStart = 0;          // saniye cinsinden başlangıç
+      this._boostPopPlayed = false;      // bu basışta çaldık mı?
+
+
+            // === Audio ===
+      this._bgm = new Audio("https://cdn.prod.website-files.com/67fb1cd83af51c4fe96dacb2/68ffb4adf30691cf2d7ec738_Night%20Patrol.mp3");
+      this._bgm.loop = true; this._bgm.preload = "auto"; this._bgm.volume = 0.6;
+
+      // Motor için çift audio (crossfade loop)
+      this._engineUrl = "https://cdn.prod.website-files.com/67fb1cd83af51c4fe96dacb2/69003db58dbf725d05302157_normalspeedv1.MP3"; // mevcut URL'in
+      this._engA = new Audio(this._engineUrl);
+      this._engB = new Audio(this._engineUrl);
+
+[this._engA, this._engB].forEach(a => {
+  a.preload = "auto";
+  a.loop = false;        // manuel döngü yapacağız
+  a.volume = 0;          // sesi biz yöneteceğiz
+});
+
+this._engActive = this._engA;  // şu an çalan
+this._engIdle   = this._engB;  // sıradaki
+this._engTimer  = null;        // crossfade kontrolü
+this._engVolTarget = 0.7;      // hedef motor ses seviyesi
+this._engine = this._engActive; // geriye dönük uyumluluk (bazı yerlerde kullanıyorsun)
+
+
+      this._bgmStarted = false;   // autoplay guard
+      this._engStarted = false;   // autoplay guard
+
+      // Audio UI
+      this._audioPanel = document.getElementById('audioPanel');
+      this._bgmMuteBtn = document.getElementById('bgmMuteBtn');
+      this._engMuteBtn = document.getElementById('engMuteBtn');
+      this._bgmVol = document.getElementById('bgmVol');
+      this._engVol = document.getElementById('engVol');
+
+      // Durum
+      this._bgmMuted = false;
+      this._engMuted = false;
+
+
+
+      // HUD
+      this._hudScore = document.getElementById('hud-score');
+      this._hudTime  = document.getElementById('hud-time');
+
+      // Overlay
+      this._overlay  = document.getElementById('overlay');
+      this._btn      = document.getElementById('playBtn');
+      this._ovlTitle = document.getElementById('ovlTitle');
+      this._ovlDesc  = document.getElementById('ovlDesc');
+
+      // State
+      this._mode = 'IDLE'; // IDLE (night, no traffic), RUNNING (traffic)
+      this._score = 0;
+      this._gameStartEpoch = performance.now()/1000;
+      this._hardMode = false;
+      this._boostAcc = 0;
+      this._lastNow = performance.now()/1000;
+
+      this.#initScene();
+      this.#initObjects();
+      this.#initCamera();
+      this.#initRenderer();
+      this.#initComposer();
+      this.#initEventListeners();
+      this.#onWindowResize();
+      this.#root.classList.add(FullScreen3DExample.CSS_ROOT_LOADED_VARIANT);
+
+      // Gece başlangıcı
+      this.#startTime = performance.now()/1000;
+      this._spaceDown=false;
+
+      // IDLE: trafik kapalı
+      this.#world.setTrafficEnabled(false);
+      this.showOverlay(true, 'start');
+
+      this.start(); // render loop
+      this._updateHud();
+    }
+
+    _ensureBoostStarted(){
+      if(this._boostStarted) return;
+      this._boost.play().then(()=>{ this._boostStarted = true; }).catch(()=>{});
+    }
+    _setBoostAudioState(active){
+      if(active){
+        this._ensureBoostStarted();
+        try { this._boost.currentTime = 0; } catch(_) {}
+        this._boost.play().catch(()=>{});
+        if(this._engStarted) this._engine.pause();
+      }else{
+        this._boost.pause();
+        try { this._boost.currentTime = 0; } catch(_) {}
+        if(!this._engMuted){
+          this._ensureEngineStarted();
+          this._engine.play().catch(()=>{});
+        }
+      }
+      this._applyVolumes();
+    }
+
+    _startEngineLoop(){
+      // Boost kapalıyken çağır
+      if (this._engTimer) clearInterval(this._engTimer);
+
+      const a = this._engActive;
+      // Döngü başlarken dosyanın az ilerisinden başlat (klik/kopma azaltır)
+      const startAt = Math.min(ENG_LOOP_START + 0.12, Math.max(0, (ENG_LOOP_END - 0.2)));
+      a.currentTime = startAt;
+      a.playbackRate = this._targetEngRate || 1.0;
+      a.muted = !!this._engMuted;
+      a.volume = this._engMuted ? 0 : this._engVolTarget;
+
+      a.play().then(()=>{}).catch(()=>{});
+
+      // Her 50ms’de döngü sınırını kontrol et
+      this._engTimer = setInterval(()=> this._tickEngineCrossfade(), 50);
+    }
+
+    _stopEngineLoop(){
+      if (this._engTimer) { clearInterval(this._engTimer); this._engTimer = null; }
+      [this._engActive, this._engIdle].forEach(a => { try{ a.pause(); }catch(_){ } a.volume = 0; });
+    }
+
+    // Döngü sınırına yaklaşırken yedeği devreye alıp çapraz sönümle
+    _tickEngineCrossfade(){
+      const a = this._engActive, b = this._engIdle;
+      if (!a || a.paused) return;
+
+      // playbackRate/volume değişimleri dinamikse burada da uygula
+      const rate = this._targetEngRate || 1.0;
+      a.playbackRate = rate; b.playbackRate = rate;
+      const vol = this._engMuted ? 0 : this._engVolTarget;
+
+      const t = a.currentTime;
+      const crossStart = ENG_LOOP_END - ENG_FADE;
+
+      if (t >= crossStart) {
+        if (b.paused) {
+          // Yedeği loop başlangıcından başlat (biraz içeriden girmek istersen +0.02 ekleyebilirsin)
+          b.currentTime = ENG_LOOP_START + 0.02;
+          b.muted = !!this._engMuted;
+          b.volume = 0;
+          b.playbackRate = rate;
+          b.play().then(()=>{}).catch(()=>{});
+        }
+
+        // 0..1 arası crossfade ilerlemesi
+        const u = Math.min(1, Math.max(0, (t - crossStart) / ENG_FADE));
+        a.volume = (1 - u) * vol;
+        b.volume = u * vol;
+
+        // Sınırı geçtik → roll swap
+        if (t >= ENG_LOOP_END - 0.01) {
+          a.pause(); a.volume = 0;
+          // aktif & yedek değişimi
+          this._engActive = b;
+          this._engIdle   = a;
+          // geriye dönük uyumluluk
+          this._engine = this._engActive;
+        }
+      } else {
+        // Crossfade değilken de hedef volümü koru
+        a.volume = vol;
+      }
+    }
+
+    // Dışarıdan volume ayarı (mevcut _applyVolumes içinden çağıracağız)
+    _setEngineVolume(v){
+      this._engVolTarget = Math.max(0, Math.min(1, v));
+      // Aktif/idle sesleri hemen hedefe çek (crossfade içinde ayrıca güncellenecek)
+      if (this._engActive) this._engActive.volume = this._engMuted ? 0 : this._engVolTarget;
+      if (this._engIdle)   this._engIdle.volume   = 0; // yedek genelde 0 olmalı
+    }
+
+
+    #initScene(){ this.#scene=new THREE.Scene(); }
+    #initObjects(){
+      this.#world=new SandboxWorld(
+        ()=> this.onCrash(),
+        ()=> { this._score += 1; this._updateHud(); showPointToast("Şerit değiştirme", 1); },
+        ()=> { this._score += 1; this._updateHud(); showPointToast("Makas", 1); },
+        ()=> this._onBoostOvertake()   // NEW: boost'lu geçiş +3
+      );
+      this.#scene.add(this.#world);
+    }
+
+    #initCamera(){ const fov=45, aspect=window.innerWidth/window.innerHeight, near=1, far=1000; this.#camera=new THREE.PerspectiveCamera(fov,aspect,near,far); this.#camera.position.set(0,2,1); this.#camera.lookAt(0,0,200); this.#camera.updateProjectionMatrix(); this.#cameraData={ positionX:0, positionY:2, lookAtX:0 }; }
+    #initRenderer(){ const clearColor=COLOR_PALETTE.black, clearColorAlpha=1; this.#renderer=new THREE.WebGLRenderer({ alpha:true, logarithmicDepthBuffer:true }); this.#renderer.setClearColor(clearColor, clearColorAlpha); this.#renderer.setPixelRatio(window.devicePixelRatio); this.#renderer.toneMapping = THREE.ACESFilmicToneMapping; this.#renderer.toneMappingExposure = 0.6; if(FLAGS.ENABLE_SHADOWS){ this.#renderer.shadowMap.enabled=true; this.#renderer.shadowMap.type=THREE.PCFSoftShadowMap; } this.#root.appendChild(this.#renderer.domElement); }
+    #initComposer(){ const width=window.innerWidth, height=window.innerHeight; this.#composer=new THREE.EffectComposer(this.#renderer); this.#composer.setSize(width,height); this.#initRenderPass(); if(FLAGS.ENABLE_BLOOM){ this.#initBloomPass(); } if(FLAGS.ENABLE_NOISE){ this.#initShaderPass(); } }
+    #initRenderPass(){ const renderPass=new THREE.RenderPass(this.#scene,this.#camera); this.#composer.addPass(renderPass); }
+    #initBloomPass(){ const width=window.innerWidth, height=window.innerHeight; const resolution=new THREE.Vector2(width,height); const strength=0.8, radius=0.5, threshold=0.1; const bloomPass=new THREE.UnrealBloomPass(resolution,strength,radius,threshold); this.#composer.addPass(bloomPass); }
+    #initShaderPass(){ const pass=new THREE.ShaderPass({ uniforms:{ tDiffuse:{ type:"t", value:null }, uTime:{ value:1 }, uStrength:{ value:1 } }, vertexShader:`varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`, fragmentShader:`uniform float uTime; uniform float uStrength; uniform sampler2D tDiffuse; varying vec2 vUv; float rand(vec2 seed); float noise(vec2 position); void main(){ vec4 color=texture2D(tDiffuse, vUv); float d=uStrength * 0.05 * noise(50.0 * (100.0 * uTime + vec2(vUv.x, 20.0 * vUv.y))); color = vec4(color.r - d, color.g - d, color.b - d, 1.0); gl_FragColor=color; } float rand(vec2 seed){ return fract(sin(dot(seed, vec2(12.9898,78.233))) * 43758.5453123);} float noise(vec2 position){ vec2 blockPosition=floor(position); float tl=rand(blockPosition); float tr=rand(blockPosition+vec2(1.0,0.0)); float bl=rand(blockPosition+vec2(0.0,1.0)); float br=rand(blockPosition+vec2(1.0,1.0)); vec2 c=smoothstep(0.0,1.0,fract(position)); return mix(tl,tr,c.x) + (bl-tl)*c.y*(1.0-c.x) + (br-tr)*c.x*c.y; }` }); pass.renderToScreen=true; this.#composer.addPass(pass); this.#noisePass = pass; }
+    #initEventListeners(){
+      window.addEventListener("resize", this.#onWindowResize.bind(this));
+      document.addEventListener("mousemove", this.#onMouseMove.bind(this));
+      document.addEventListener("touchmove", (ev)=>{ 
+        if(!ev.touches || !ev.touches[0]) return; 
+        const x = ev.touches[0].clientX; 
+        this.#updateCarTargetFromPointer(x); 
+      }, {passive:true});
+
+      // Klavye: Space ile boost
+      document.addEventListener('keydown', (ev)=>{
+        if(ev.code==='Space'){
+          if(!this._spaceDown && this._mode==='RUNNING'){
+            this._spaceDown=true;
+            this.#world.setBoost(true);
+            this.#world.triggerExhaustBurst();
+                  // YENİ: egzoz patlatma uzun basışta
+            const now = performance.now()/1000;
+            this._boostHoldStart = now;
+            this._boostPopPlayed = false;
+            this._setBoostAudioState(true);     // ← patlatmanın yerine
+          }
+          ev.preventDefault();
+        }
+      });
+      document.addEventListener('keyup', (ev)=>{
+        if(ev.code==='Space'){
+          this._spaceDown=false;
+          this.#world.setBoost(false);
+              // YENİ: egzoz patlatma uzun basışta
+          this._boostHoldStart = 0;
+          this._boostPopPlayed = false;
+          this._setBoostAudioState(false);      // ← patlatmanın yerine
+          ev.preventDefault();
+        }
+      });
+
+      // Mouse: Sol tık ile boost
+      document.addEventListener('mousedown', (ev)=>{
+        if(ev.button!==0) return; // sadece sol tık
+        if(!this._spaceDown && this._mode==='RUNNING'){
+          this._spaceDown = true;
+          this.#world.setBoost(true);
+          this.#world.triggerExhaustBurst();
+              // YENİ: egzoz patlatma uzun basışta
+          const now = performance.now()/1000;
+          this._boostHoldStart = now;
+          this._boostPopPlayed = false;
+          this._setBoostAudioState(true);     // ←
+          ev.preventDefault(); // metin seçimi vs. engelle
+        }
+      });
+      document.addEventListener('mouseup', (ev)=>{
+        if(ev.button!==0) return;
+        this._spaceDown = false;
+        this.#world.setBoost(false);
+          // YENİ: egzoz patlatma uzun basışta
+        this._boostHoldStart = 0;
+        this._boostPopPlayed = false;
+        this._setBoostAudioState(false);      // ←
+      });
+      // Emniyet kemeri: odak kaybında boost’u kapat
+      window.addEventListener('blur', ()=>{
+        this._spaceDown = false;
+        this.#world.setBoost(false);
+                // YENİ: egzoz patlatma uzun basışta
+        this._boostHoldStart = 0;
+        this._boostPopPlayed = false;
+        this._setBoostAudioState(false);      // ←
+      });
+
+      this._btn.addEventListener('click', ()=> this.startRound());
+
+
+            // Müzik mute
+      this._bgmMuteBtn.addEventListener('click', ()=>{
+        this._bgmMuted = !this._bgmMuted;
+        this._updateAudioUi();
+        if(!this._bgmStarted && !this._bgmMuted) this._ensureBgmStarted();
+      });
+      // Motor mute
+      this._engMuteBtn.addEventListener('click', ()=>{
+        this._engMuted = !this._engMuted;
+        this._updateAudioUi();
+        if(!this._engStarted && !this._engMuted) this._ensureEngineStarted();
+      });
+      // Ses düzeyi (slider)
+      this._bgmVol.addEventListener('input', ()=> this._applyVolumes());
+      this._engVol.addEventListener('input', ()=> this._applyVolumes());
+    }
+
+
+    
+
+    #onWindowResize(){ const width=window.innerWidth, height=window.innerHeight; this.#camera.aspect=width/height; this.#camera.updateProjectionMatrix(); this.#renderer.setSize(width,height); this.#composer.setSize(width,height); }
+    #onMouseMove(e){
+      this.#cameraData.positionX=(CAMERA_MOUSE_X_FACTOR*(window.innerWidth/2 - e.clientX))/window.innerWidth;
+      this.#cameraData.positionY=2 + (0.5*(window.innerHeight/2 - e.clientY))/window.innerHeight;
+      if(this._mode==='RUNNING'){ this.#updateCarTargetFromPointer(e.clientX); }
+    }
+    #updateCarTargetFromPointer(pointerX){
+      const nx = pointerX / window.innerWidth; const centered = (nx - 0.5) * 2.0;
+      const curved = Math.sign(centered) * Math.pow(Math.abs(centered), MOUSE_EXP);
+      const target = CAR_BASE_X + curved * CAR_LANE_AMPLITUDE; this.#world.setCarLaneTarget(target);
+    }
+
+    showOverlay(show, reason=null){
+      if(show){
+        this._overlay.classList.remove('hidden');
+        if(reason==='start'){ this._ovlTitle.textContent="Gece devriyesi 🌙"; this._ovlDesc.textContent="Oyunu başlatmak için “Başla”ya bas."; this._btn.textContent="Başla"; }
+        else if(reason==='crash'){ this._ovlTitle.textContent="Kaza! 🚧"; this._ovlDesc.textContent="Tekrar başlatmak için “Tekrar Oyna”ya bas."; this._btn.textContent="Tekrar Oyna"; }
+      } else { this._overlay.classList.add('hidden'); }
+    }
+
+    _formatTime(sec){ const m = Math.floor(sec/60); const s = Math.floor(sec%60); const tenth = Math.floor((sec - Math.floor(sec))*10); return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}.${tenth}`; }
+    _updateHud(){
+        this._hudScore.textContent = `Puan: ${this._score}`;
+        let elapsed;
+        if (this._mode === 'RUNNING') {
+            const now = performance.now()/1000;
+            elapsed = Math.max(0, now - this._gameStartEpoch);
+        } else {
+            elapsed = this._frozenElapsedSec; // kaza ekranında artmaz
+        }
+        this._hudTime.textContent = `Süre: ${this._formatTime(elapsed)}`;
+    }
+
+    addScore(x, toastMsg){
+      if(this._mode!=='RUNNING') return;
+      this._score += x; this._updateHud();
+      if(toastMsg) showToast(toastMsg);
+    }
+
+    _onBoostOvertake(){
+      this._score += 3;
+      this._updateHud();
+      showPointToast("Geçiş (Boost)", 3);
+    }
+
+
+    onCrash(){
+      // 1) Dünya IDLE’a dönsün (araç durmaz), 2) Güneş geceye sıfırlansın, 3) Overlay açılsın
+      const now = performance.now()/1000;
+      this._frozenElapsedSec = now - this._gameStartEpoch;
+
+      this.#world.handleCrash();
+      this._spaceDown = false; this.#world.setBoost(false);
+      this._mode = 'IDLE';
+      this.#startTime = performance.now()/1000; // sunrise p=0 → anında gece başlangıcı
+      this.showOverlay(true,'crash');
+      this._setBoostAudioState(false);
+      this._boost.pause();
+      this._boost.currentTime = 0;
+
+    }
+
+    // TIKLAYINCA YENİ DÜNYA KUR → tüm kilitler/çarpışma fresh
+    startRound(){
+      // Eski dünyayı sök
+      this.#scene.remove(this.#world);
+      // Yeni dünyayı kur (çarpışma kilidi ve tüm durumlar sıfır)
+      this.#world = new SandboxWorld(
+        ()=> this.onCrash(),
+        ()=> { this._score += 1; this._updateHud(); showPointToast("Şerit değiştirme", 1); },
+        ()=> { this._score += 1; this._updateHud(); showPointToast("Makas", 1); },
+        ()=> this._onBoostOvertake()   // NEW
+      );
+      this.#scene.add(this.#world);
+
+      const now = performance.now()/1000;
+      this._gameStartEpoch = now;
+      this._frozenElapsedSec = 0;   // <<< ekle
+      this._score = 0;
+      this._hardMode = false;
+      this._boostAcc = 0;
+      this._spaceDown = false;
+      this._mode='RUNNING';
+      this._setBoostAudioState(false);
+      this._boost.pause();
+      this._boost.currentTime = 0;
+
+      // Yeni tur: boost sesini ve rölantiyi sıfırla
+      this._boost?.pause?.();
+      try { this._boost.currentTime = 0; } catch(_) {}
+
+      this._engine.pause();
+      try { this._engine.currentTime = 0; } catch(_) {}
+
+      if (!this._engMuted) {
+        this._engine.play().catch(()=>{});
+        this._engStarted = true; // tekrar başlattık
+      }
+
+      // Trafiği aç, tertemiz başlangıç
+      this.#world.setTrafficEnabled(true);
+      this.#world.clearTraffic();
+
+      this.showOverlay(false);
+      showToast("Başla! 🏁");
+      this._ensureBgmStarted();
+      this._ensureEngineStarted();
+      this._applyVolumes();
+      this._updateAudioUi();
+
+      //bgmusic
+      this._ensureBgmStarted();
+
+    }
+
+    _ensureBgmStarted(){
+      if(this._bgmStarted) return;
+      this._bgm.play().then(()=>{ this._bgmStarted = true; }).catch(()=>{ /* sessizce */ });
+    }
+    _ensureEngineStarted(){
+      if (!this._engine) return;
+      if (this._engine.paused) {
+        this._engine.play().then(()=>{ this._engStarted = true; }).catch(()=>{});
+        return;
+      }
+      if (!this._engStarted) {
+        this._engine.play().then(()=>{ this._engStarted = true; }).catch(()=>{});
+      }
+    }
+
+    _updateAudioUi(){
+      // Mute ikonları
+      this._bgmMuteBtn?.setAttribute('data-muted', this._bgmMuted ? 'true':'false');
+      this._engMuteBtn?.setAttribute('data-muted', this._engMuted ? 'true':'false');
+      // Gerçek mute
+      this._bgm.muted = this._bgmMuted;
+      this._engine.muted = this._engMuted;
+      this._boostPop.muted = this._engMuted; // boost popcorn motor sesi sayılır
+
+    }
+    _applyVolumes(){
+      const m = (this._bgmVol?.valueAsNumber ?? 60) / 100;  // müzik
+      const e = (this._engVol?.valueAsNumber ?? 70) / 100;  // motor/boost
+
+      const boosting = this.#world?.isBoosting?.() ?? false;
+
+      this._bgm.volume = Math.max(0, Math.min(1, m));
+
+      if(boosting){
+        this._engine.volume = 0;
+        this._boost.volume  = Math.max(0, Math.min(1, e));
+      }else{
+        this._boost.volume  = 0;
+        this._engine.volume = Math.max(0, Math.min(1, e));
+      }
+    }
+
+
+
+    #updateEverything(){
+      const now=performance.now()/1000;
+      // Space (veya sol tık) hâlâ basılıysa ve 1 sn geçtiyse bir kez patlat
+      if (this._spaceDown && this.#world.isBoosting() && this._boostHoldStart > 0 && !this._boostPopPlayed) {
+        const held = now - this._boostHoldStart;
+        if (held >= 1.0) {
+          try {
+            // Mute/vol ayarlarına uy, minik pitch varyasyonu
+            this._boostPop.currentTime = 0;
+            this._boostPop.playbackRate = 0.95 + Math.random()*0.1; // 0.95–1.05
+            this._boostPop.play();
+          } catch(e) { /* sessizce geç */ }
+          this._boostPopPlayed = true; // bu basışta bir kez
+        }
+      }
+
+      const t = now - this.#startTime;
+      const p = Math.max(0, Math.min(1, t / SUNRISE_DURATION_SEC));
+      const dt = now - this._lastNow; this._lastNow = now;
+
+            // Motor playbackRate'i boost'a göre yumuşak değiştir
+      if(this._engStarted){
+        // boost'ta hafif yükselme
+        const b = this.#world.getBoostLevel ? this.#world.getBoostLevel() : (this.#world.isBoosting()?1:0);
+        const targetRate = 1.0 + 0.25 * b; // 0→1 arası seviyeye göre kademeli
+
+        this._engine.playbackRate += (targetRate - this._engine.playbackRate) * 0.05; // lerp
+      }
+      // Volume’ları boost durumuna göre güncelle (ince dokunuş)
+      if(this._engStarted) this._applyVolumes();
+
+
+      if(this._mode==='RUNNING'){
+        // Boost → her saniye +1
+        const b = this.#world.getBoostLevel ? this.#world.getBoostLevel() : 0;
+        if (b > 0.2) { // 20% üzeri olunca “boost aktif” say
+          this._boostAcc += dt;
+          while(this._boostAcc >= 1.0){
+            this._boostAcc -= 1.0;
+            this._score += 1;
+            this._updateHud();
+            showPointToast("Boost", 1);
+          }
+        } else { this._boostAcc = 0; }
+
+        // 60. saniyeden sonra zorluk
+        const elapsed = now - this._gameStartEpoch;
+        if(!this._hardMode && elapsed >= 60){
+          this._hardMode = true; this.#world.enableHardMode(); showToast("Zorluk arttı!");
+        }
+      }
+
+      // Dünya her modda akar
+      this.#world.update();
+
+      // shader uniforms
+      this.#scene.traverse((child)=>{ if(child.isMesh){ const { shader } = child.material.userData; if(shader){ shader.uniforms.uTime.value=now; } } });
+      if(this.#noisePass){ this.#noisePass.uniforms.uTime.value = now % 10; this.#noisePass.uniforms.uStrength.value = 1.0 - p; }
+
+      // kamera
+      const b = this.#world.getBoostLevel ? this.#world.getBoostLevel() : 0;
+      const targetFov = 45 + (52 - 45) * b;  // 45→52 arası kademeli
+      this.#camera.fov += (targetFov - this.#camera.fov) * 0.08;
+      const x = (this.#cameraData.positionX * CAMERA_PARALLAX) + 0.15*(Math.sin(0.1*now)+Math.sin(0.05*now));
+      const y = this.#cameraData.positionY + 0.3*Math.cos(0.3*now);
+      this.#camera.position.set(x,y,1);
+      const desiredLookX = this.#world.getCarX() * LOOK_FOLLOW_RATIO;
+      this.#cameraData.lookAtX = THREE.MathUtils.lerp(this.#cameraData.lookAtX, desiredLookX, LOOK_FOLLOW_STRENGTH);
+      this.#camera.lookAt(this.#cameraData.lookAtX, 0, 200);
+      this.#camera.updateProjectionMatrix();
+
+      this.#world.setSunriseProgress(p);
+      this.#renderer.toneMappingExposure = 0.6 + 0.9 * p;
+
+      // HUD zamanı
+      this._updateHud();
+    }
+    #render(){ this.#updateEverything(); this.#composer.render(this.#scene, this.#camera); requestAnimationFrame(this.#render.bind(this)); }
+    start(){ this.#render(); }
+  }
+
+  function main(){ const root=document.getElementById('root'); const example=new FullScreen3DExample(root); example.start(); }
+  document.addEventListener('DOMContentLoaded', main);
+  </script>
+
+  
+
+</body>
+</html>
