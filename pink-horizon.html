@@ -60,7 +60,10 @@
     .toast.show{ opacity:1; transform:translateY(0) scale(1) }
 
     /* OVERLAY → alt-ortada buton */
-    .overlay{ position:fixed; inset:0; display:block; background: none; z-index:12; }
+    .overlay{ position:fixed; inset:0; display:block; background: none; z-index:12; pointer-events:none;     /* ← kritik */}
+    .overlay .panel{
+      pointer-events:auto;     /* Yalnızca panel tıklanabilir kalsın */
+    }
     .panel{
       position:absolute;
       top: var(--lower-ui-top);
