@@ -1521,7 +1521,7 @@ this._engine = this._engActive; // geriye dönük uyumluluk (bazı yerlerde kull
             const now = performance.now()/1000;
             elapsed = Math.max(0, now - this._gameStartEpoch);
         } else {
-            elapsed = this._frozenElapsedSec; // kaza ekranında artmaz
+            elapsed = this._frozenElapsedSec; // kaza ekranında artmaz.
         }
         this._hudTime.textContent = `Süre: ${this._formatTime(elapsed)}`;
     }
