@@ -46,9 +46,9 @@
       text-shadow:0 0 8px rgba(76,201,240,.35)
     }
 
-    :root { --lower-ui-top: 72%; } /* 68–76% arası deneyebilirsin */
+    :root { --lower-ui-top: 72%; }
 
-    /* TOASTS → alt orta ve SADECE METİN */
+    /* TOASTS → alt-orta */
     .toasts{
       position:fixed;
       top: var(--lower-ui-top);
@@ -58,16 +58,12 @@
       z-index:10; pointer-events:none;
     }
     .toast{
-      background: transparent;
-      border: 0;
-      padding: 0;
-      color:#fff;
-      font-family: ui-monospace,Menlo,Consolas,monospace;
-      font-size: 18px;
+      background: transparent; border: 0; padding: 0; color:#fff;
+      font-family: ui-monospace,Menlo,Consolas,monospace; font-size: 18px;
       opacity:0; transform:translateY(10px) scale(.98);
       transition:opacity .25s ease, transform .25s ease;
       text-shadow: 0 2px 10px rgba(0,0,0,.6);
-      will-change: transform, opacity; /* mobil */
+      will-change: transform, opacity;
     }
     .toast.show{ opacity:1; transform:translateY(0) scale(1) }
 
@@ -77,15 +73,14 @@
     .panel{
       position:absolute;
       top: var(--lower-ui-top);
-      left:50%;
-      transform:translate(-50%,-50%);
+      left:50%; transform:translate(-50%,-50%);
       background: none; border: 0; box-shadow: none; padding: 0;
       color:#fff; text-align:center;
       font-family: ui-monospace,Menlo,Consolas,monospace;
       min-width: unset;
     }
     .panel h1{ font-size:20px; margin-bottom:6px; text-shadow:0 2px 10px rgba(0,0,0,.6) }
-    .panel p { opacity:.9;  margin-bottom:10px }
+    .panel p { opacity:.9; margin-bottom:10px }
     .panel button{
       all: unset; cursor: pointer; display: inline-block; padding: 10px 18px; border-radius: 14px; color:#fff; font-weight:800;
       text-shadow: 0 2px 10px rgba(0,0,0,.6);
@@ -101,13 +96,11 @@
       box-shadow: 0 12px 36px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.3), inset 0 -8px 18px rgba(255,255,255,.1);
     }
     .panel button:active{ transform: translateY(1px) scale(.99); }
-    .overlay.hidden { display: none !important; }
 
-    /* Ses paneli (ortalanmış) */
+    /* Ses paneli (alt-orta, aero glass) */
     .audio-panel{
       position: fixed;
-      left: 50%;
-      right: auto;
+      left: 50%; right: auto;
       bottom: calc(60px + env(safe-area-inset-bottom));
       transform: translateX(-50%);
       display:flex; flex-direction:column; gap:10px;
@@ -144,8 +137,7 @@
       background: linear-gradient(to bottom, rgba(255,255,255,.18), rgba(255,255,255,.06));
       border:1px solid rgba(255,255,255,.28);
       box-shadow:0 10px 30px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.25), inset 0 -8px 18px rgba(255,255,255,.08);
-      backdrop-filter: blur(12px) saturate(160%);
-      -webkit-backdrop-filter: blur(12px) saturate(160%);
+      backdrop-filter: blur(12px) saturate(160%); -webkit-backdrop-filter: blur(12px) saturate(160%);
       transition: transform .12s ease, box-shadow .12s ease;
     }
     .glass-btn:hover{
@@ -154,6 +146,8 @@
     }
     .glass-btn:active{ transform:translateY(1px) scale(.98); }
     .glass-btn svg{ width:22px; height:22px; display:block; }
+    /* GH Pages bazı temalarda boş butona ... basıyor → kapat */
+    .glass-btn:empty::before{ content:none !important; }
 
     /* Yardım paneli */
     .glass-panel{
@@ -194,7 +188,7 @@
     <div class="pill" id="hud-time">Süre: 00:00.0</div>
   </div>
 
-  <!-- Toasts (center) -->
+  <!-- Toasts -->
   <div class="toasts" id="toasts"></div>
 
   <!-- Start/Crash Overlay -->
@@ -206,128 +200,104 @@
     </div>
   </div>
 
-<!-- Audio Panel (SADECE ses denetimleri; sağ-alt) -->
-<div id="audioPanel" class="audio-panel hidden" role="group" aria-label="Ses denetimleri">
-  <div class="row">
-    <button id="bgmMuteBtn" class="mute-btn" type="button" aria-label="Müziği kapat" data-muted="false" title="Müzik">
-      <span class="icon-on">
-        <!-- hoparlör açık -->
-        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24">
-          <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M17.5 8.43A4.985 4.985 0 0 1 19 12a4.984 4.984 0 0 1-1.43 3.5M14 6.135v11.73a1 1 0 0 1-1.64.768L8 15H6a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h2l4.36-3.633a1 1 0 0 1 1.64.768Z"/>
-        </svg>
-      </span>
-      <span class="icon-off">
-        <!-- hoparlör kapalı -->
-        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24">
-          <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M15.5 8.43A4.985 4.985 0 0 1 17 12c0 1.126-.5 2.5-1.5 3.5m2.864-9.864A8.972 8.972 0 0 1 21 12c0 2.023-.5 4.5-2.5 6M7.8 7.5l2.56-2.133a1 1 0 0 1 1.64.768V12m0 4.5v1.365a1 1 0 0 1-1.64.768L6 15H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1m1-4 14 14"/>
-        </svg>
-      </span>
-    </button>
-    <label for="bgmVol">Müzik</label>
-    <input id="bgmVol" class="vol" type="range" min="0" max="100" value="60" />
-  </div>
-
-  <div class="row">
-    <button id="engMuteBtn" class="mute-btn" type="button" aria-label="Motoru kapat" data-muted="false" title="Motor">
-      <span class="icon-on">
-        <!-- hoparlör açık -->
-        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24">
-          <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M17.5 8.43A4.985 4.985 0 0 1 19 12a4.984 4.984 0 0 1-1.43 3.5M14 6.135v11.73a1 1 0 0 1-1.64.768L8 15H6a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h2l4.36-3.633a1 1 0 0 1 1.64.768Z"/>
-        </svg>
-      </span>
-      <span class="icon-off">
-        <!-- hoparlör kapalı -->
-        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24">
-          <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M15.5 8.43A4.985 4.985 0 0 1 17 12c0 1.126-.5 2.5-1.5 3.5m2.864-9.864A8.972 8.972 0 0 1 21 12c0 2.023-.5 4.5-2.5 6M7.8 7.5l2.56-2.133a1 1 0 0 1 1.64.768V12m0 4.5v1.365a1 1 0 0 1-1.64.768L6 15H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1m1-4 14 14"/>
-        </svg>
-      </span>
-    </button>
-    <label for="engVol">Motor</label>
-    <input id="engVol" class="vol" type="range" min="0" max="100" value="70" />
-  </div>
-</div>
-
-<!-- ÜST-SAĞ: Yardım (?) ve Ses Ayarları -->
-<div class="fab-col">
-  <button id="helpBtn" class="glass-btn" title="Nasıl oynanır?">
-    <!-- Soru işareti (senin verdiğin) -->
-    <svg class="w-6 h-6" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
-      <path fill-rule="evenodd" d="M2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10S2 17.523 2 12Zm9.008-3.018a1.502 1.502 0 0 1 2.522 1.159v.024a1.44 1.44 0 0 1-1.493 1.418 1 1 0 0 0-1.037.999V14a1 1 0 1 0 2 0v-.539a3.44 3.44 0 0 0 2.529-3.256 3.502 3.502 0 0 0-7-.255 1 1 0 0 0 2 .076c.014-.398.187-.774.48-1.044Zm.982 7.026a1 1 0 1 0 0 2H12a1 1 0 1 0 0-2h-.01Z" clip-rule="evenodd"/>
-    </svg>
-  </button>
-
-  <button id="settingsBtn" class="glass-btn" title="Ses ayarları">
-    <!-- Ses ayarları (senin verdiğin) -->
-    <svg class="w-6 h-6" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
-      <path d="M13 6.037c0-1.724-1.978-2.665-3.28-1.562L5.638 7.933H4c-1.105 0-2 .91-2 2.034v4.066c0 1.123.895 2.034 2 2.034h1.638l4.082 3.458c1.302 1.104 3.28.162 3.28-1.562V6.037Z"/>
-      <path fill-rule="evenodd" d="M14.786 7.658a.988.988 0 0 1 1.414-.014A6.135 6.135 0 0 1 18 12c0 1.662-.655 3.17-1.715 4.27a.989.989 0 0 1-1.414.014 1.029 1.029 0 0 1-.014-1.437A4.085 4.085 0 0 0 16 12a4.085 4.085 0 0 0-1.2-2.904 1.029 1.029 0 0 1-.014-1.438Z" clip-rule="evenodd"/>
-      <path fill-rule="evenodd" d="M17.657 4.811a.988.988 0 0 1 1.414 0A10.224 10.224 0 0 1 22 12c0 2.807-1.12 5.35-2.929 7.189a.988.988 0 0 1-1.414 0 1.029 1.029 0 0 1 0-1.438A8.173 8.173 0 0 0 20 12a8.173 8.173 0 0 0-2.343-5.751 1.029 1.029 0 0 1 0-1.438Z" clip-rule="evenodd"/>
-    </svg>
-  </button>
-</div>
-
-<!-- NASIL OYNANIR (aero glass panel, üst-sağda) -->
-<div id="helpPanel" class="glass-panel hidden" role="dialog" aria-label="Nasıl oynanır">
-  <h3>Nasıl oynanır</h3>
-  <ul>
-    <li><span class="kbd">Mouse</span> ile direksiyon…</li>
-    <li><span class="kbd">Space</span> veya <span class="kbd">Sol tık</span> basılı tut: <strong>Boost</strong>.</li>
-    <li>Odak kaybolduğunda boost otomatik kapanır.</li>
-  </ul>
-
-  <h3>Puanlama</h3>
-  <ul>
-    <li><strong>Şerit değiştirme</strong>: <span class="tag">+1</span></li>
-    <li><strong>Makas</strong>: <span class="tag">+1</span></li>
-    <li><strong>Boost açıkken yanından geçiş</strong>: <span class="tag">+3</span></li>
-    <li><strong>Boost süresi</strong>: her tam saniye <span class="tag">+1</span></li>
-  </ul>
-
-  <h3>Oyun akışı</h3>
-  <ul>
-    <li><strong>Başla</strong>: Trafik açılır, süre/puan sıfırlanır.</li>
-    <li><strong>Kaza</strong>: Trafik kapanır; <em>Tekrar Oyna</em> ile yeni tur.</li>
-  </ul>
-
-  <h3>Zorluk & Trafik</h3>
-  <ul>
-    <li><strong>60. saniye</strong> sonrası spawn sıklığı ve araç sayısı artar.</li>
-    <li>Şerit hızları farklıdır (sol/orta/sağ).</li>
-    <li><strong>Duvar önleme</strong>: aynı z’de en fazla 2 şerit dolu.</li>
-  </ul>
-
-  <h3>Ses</h3>
-  <ul>
-    <li><strong>Ses Ayarları</strong> butonundan müzik ve motoru ayrı ayrı kıs/aç.</li>
-  </ul>
-</div>
-
-
+  <!-- Audio Panel -->
+  <div id="audioPanel" class="audio-panel hidden" role="group" aria-label="Ses denetimleri">
+    <div class="row">
+      <button id="bgmMuteBtn" class="mute-btn" type="button" aria-label="Müziği kapat" data-muted="false" title="Müzik">
+        <span class="icon-on">
+          <!-- hoparlör açık -->
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24">
+            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M17.5 8.43A4.985 4.985 0 0 1 19 12a4.984 4.984 0 0 1-1.43 3.5M14 6.135v11.73a1 1 0 0 1-1.64.768L8 15H6a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h2l4.36-3.633a1 1 0 0 1 1.64.768Z"/>
+          </svg>
+        </span>
+        <span class="icon-off">
+          <!-- hoparlör kapalı -->
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24">
+            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M15.5 8.43A4.985 4.985 0 0 1 17 12c0 1.126-.5 2.5-1.5 3.5m2.864-9.864A8.972 8.972 0 0 1 21 12c0 2.023-.5 4.5-2.5 6M7.8 7.5l2.56-2.133a1 1 0 0 1 1.64.768V12m0 4.5v1.365a1 1 0 0 1-1.64.768L6 15H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1m1-4 14 14"/>
+          </svg>
+        </span>
+      </button>
+      <label for="bgmVol">Müzik</label>
+      <input id="bgmVol" class="vol" type="range" min="0" max="100" value="60" />
+    </div>
 
     <div class="row">
       <button id="engMuteBtn" class="mute-btn" type="button" aria-label="Motoru kapat" data-muted="false" title="Motor">
         <span class="icon-on">
-          <!-- SES AÇ -->
           <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24">
             <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M17.5 8.43A4.985 4.985 0 0 1 19 12a4.984 4.984 0 0 1-1.43 3.5M14 6.135v11.73a1 1 0 0 1-1.64.768L8 15H6a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h2l4.36-3.633a1 1 0 0 1 1.64.768Z"/>
+              d="M17.5 8.43A4.985 4.985 0 0 1 19 12a4.984 4.984 0 0 1-1.43 3.5M14 6.135v11.73a1 1 0 0 1-1.64.768L8 15H6a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h2l4.36-3.633a1 1 0 0 1 1.64.768Z"/>
           </svg>
         </span>
         <span class="icon-off">
-          <!-- SES KAPAT -->
           <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24">
             <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M15.5 8.43A4.985 4.985 0 0 1 17 12c0 1.126-.5 2.5-1.5 3.5m2.864-9.864A8.972 8.972 0 0 1 21 12c0 2.023-.5 4.5-2.5 6M7.8 7.5l2.56-2.133a1 1 0 0 1 1.64.768V12m0 4.5v1.365a1 1 0 0 1-1.64.768L6 15H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1m1-4 14 14"/>
+              d="M15.5 8.43A4.985 4.985 0 0 1 17 12c0 1.126-.5 2.5-1.5 3.5m2.864-9.864A8.972 8.972 0 0 1 21 12c0 2.023-.5 4.5-2.5 6M7.8 7.5l2.56-2.133a1 1 0 0 1 1.64.768V12m0 4.5v1.365a1 1 0 0 1-1.64.768L6 15H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1m1-4 14 14"/>
           </svg>
         </span>
       </button>
       <label for="engVol">Motor</label>
       <input id="engVol" class="vol" type="range" min="0" max="100" value="70" />
     </div>
+  </div>
+
+  <!-- ALT-ORTA: Yardım ve Ayarlar -->
+  <div class="fab-col">
+    <button id="helpBtn" class="glass-btn" title="Nasıl oynanır?">
+      <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+        <path fill="currentColor" fill-rule="evenodd"
+          d="M2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10S2 17.523 2 12Zm9.008-3.018a1.502 1.502 0 0 1 2.522 1.159v.024a1.44 1.44 0 0 1-1.493 1.418 1 1 0 0 0-1.037.999V14a1 1 0 1 0 2 0v-.539a3.44 3.44 0 0 0 2.529-3.256 3.502 3.502 0 0 0-7-.255 1 1 0 0 0 2 .076c.014-.398.187-.774.48-1.044Zm.982 7.026a1 1 0 1 0 0 2H12a1 1 0 1 0 0-2h-.01Z"/>
+      </svg>
+    </button>
+
+    <button id="settingsBtn" class="glass-btn" title="Ses ayarları">
+      <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+        <path fill="currentColor"
+          d="M13 6.037c0-1.724-1.978-2.665-3.28-1.562L5.638 7.933H4c-1.105 0-2 .91-2 2.034v4.066c0 1.123.895 2.034 2 2.034h1.638l4.082 3.458c1.302 1.104 3.28.162 3.28-1.562V6.037Z"/>
+        <path fill="currentColor" fill-rule="evenodd"
+          d="M14.786 7.658a.988.988 0 0 1 1.414-.014A6.135 6.135 0 0 1 18 12c0 1.662-.655 3.17-1.715 4.27a.989.989 0 0 1-1.414.014 1.029 1.029 0 0 1-.014-1.437A4.085 4.085 0 0 0 16 12a4.085 4.085 0 0 0-1.2-2.904 1.029 1.029 0 0 1 0-1.438Z"/>
+        <path fill="currentColor" fill-rule="evenodd"
+          d="M17.657 4.811a.988.988 0 0 1 1.414 0A10.224 10.224 0 0 1 22 12c0 2.807-1.12 5.35-2.929 7.189a.988.988 0 0 1-1.414 0 1.029 1.029 0 0 1 0-1.438A8.173 8.173 0 0 0 20 12a8.173 8.173 0 0 0-2.343-5.751 1.029 1.029 0 0 1 0-1.438Z"/>
+      </svg>
+    </button>
+  </div>
+
+  <!-- NASIL OYNANIR -->
+  <div id="helpPanel" class="glass-panel hidden" role="dialog" aria-label="Nasıl oynanır">
+    <h3>Nasıl oynanır</h3>
+    <ul>
+      <li><span class="kbd">Mouse</span> ile direksiyon…</li>
+      <li><span class="kbd">Space</span> veya <span class="kbd">Sol tık</span> basılı tut: <strong>Boost</strong>.</li>
+      <li>Odak kaybolduğunda boost otomatik kapanır.</li>
+    </ul>
+
+    <h3>Puanlama</h3>
+    <ul>
+      <li><strong>Şerit değiştirme</strong>: <span class="tag">+1</span></li>
+      <li><strong>Makas</strong>: <span class="tag">+1</span></li>
+      <li><strong>Boost açıkken yanından geçiş</strong>: <span class="tag">+3</span></li>
+      <li><strong>Boost süresi</strong>: her tam saniye <span class="tag">+1</span></li>
+    </ul>
+
+    <h3>Oyun akışı</h3>
+    <ul>
+      <li><strong>Başla</strong>: Trafik açılır, süre/puan sıfırlanır.</li>
+      <li><strong>Kaza</strong>: Trafik kapanır; <em>Tekrar Oyna</em> ile yeni tur.</li>
+    </ul>
+
+    <h3>Zorluk & Trafik</h3>
+    <ul>
+      <li><strong>60. saniye</strong> sonrası spawn sıklığı ve araç sayısı artar.</li>
+      <li>Şerit hızları farklıdır (sol/orta/sağ).</li>
+      <li><strong>Duvar önleme</strong>: aynı z’de en fazla 2 şerit dolu.</li>
+    </ul>
+
+    <h3>Ses</h3>
+    <ul>
+      <li><strong>Ses Ayarları</strong> butonundan müzik ve motoru ayrı ayrı kıs/aç.</li>
+    </ul>
   </div>
 
   <script>
@@ -337,25 +307,35 @@
     let check=false; (function(a){check=/(android|bb\d+|meego).+mobile|avantgo|bada\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|iris|kindle|lge |maemo|midp|mmp|mobile.+firefox|netfront|opera m(ob|in)i|palm( os)?|phone|p(ixi|re)\/|plucker|pocket|psp|series(4|6)0|symbian|treo|up\.(browser|link)|vodafone|wap|windows ce|xda|xiino/i.test(a.substr(0,4))})(navigator.userAgent||navigator.vendor||window.opera); return check;}
   const IS_MOBILE_DEVICE = isMobile();
 
-  // ====== CONFIG ======
-  const FLAGS = Object.freeze({ ENABLE_SHADOWS: !IS_MOBILE_DEVICE, ENABLE_BLOOM: !IS_MOBILE_DEVICE, ENABLE_NOISE: !IS_MOBILE_DEVICE });
-  const COLOR_PALETTE = Object.freeze({ black:0x010101, white:0xeeeeee, color1:0xf72585, color2:0xb5179e, color3:0x7209b7, color4:0x560bad, color5:0x480ca8, color6:0x3a0ca3, color7:0x3f37c9, color8:0x4361ee, color9:0x4895ef, color10:0x4cc9f0 });
-  const COLOR_PALETTE_GLSL = Object.freeze({ black:"vec4(0.04, 0.04, 0.04, 1.0)", white:"vec4(0.933, 0.933, 0.933, 1.0)", color1:"vec4(0.969, 0.145, 0.522, 1.0)", color2:"vec4(0.71, 0.09, 0.62, 1.0)", color3:"vec4(0.447, 0.035, 0.718, 1.0)", color4:"vec4(0.337, 0.043, 0.678, 1.0)", color5:"vec4(0.282, 0.047, 0.659, 1.0)", color6:"vec4(0.227, 0.047, 0.639, 1.0)", color7:"vec4(0.247, 0.216, 0.788, 1.0)", color8:"vec4(0.263, 0.38, 0.933, 1.0)", color9:"vec4(0.282, 0.584, 0.937, 1.0)", color10:"vec4(0.298, 0.788, 0.941, 1.0)" });
+  // ====== KONTROL KNOBLARI ======
+  // Mobilde ağır efektleri kapatıyoruz:
+  const FLAGS = Object.freeze({
+    ENABLE_SHADOWS: !IS_MOBILE_DEVICE,   // mobilde gölge yok
+    ENABLE_BLOOM:   !IS_MOBILE_DEVICE,   // mobilde bloom yok
+    ENABLE_NOISE:   !IS_MOBILE_DEVICE    // mobilde noise yok
+  });
 
-  // Motor döngüsü (şimdilik tek loop kullanıyoruz)
-  const ENG_LOOP_START = 1.2;
-  const ENG_LOOP_END   = 6.0;
-  const ENG_FADE       = 0.25;
+  // Renk paleti
+  const COLOR_PALETTE = Object.freeze({
+    black:0x010101, white:0xeeeeee, color1:0xf72585, color2:0xb5179e, color3:0x7209b7,
+    color4:0x560bad, color5:0x480ca8, color6:0x3a0ca3, color7:0x3f37c9, color8:0x4361ee, color9:0x4895ef, color10:0x4cc9f0
+  });
+  const COLOR_PALETTE_GLSL = Object.freeze({
+    black:"vec4(0.04, 0.04, 0.04, 1.0)", white:"vec4(0.933, 0.933, 0.933, 1.0)",
+    color1:"vec4(0.969, 0.145, 0.522, 1.0)", color2:"vec4(0.71, 0.09, 0.62, 1.0)",
+    color3:"vec4(0.447, 0.035, 0.718, 1.0)", color4:"vec4(0.337, 0.043, 0.678, 1.0)",
+    color5:"vec4(0.282, 0.047, 0.659, 1.0)", color6:"vec4(0.227, 0.047, 0.639, 1.0)",
+    color7:"vec4(0.247, 0.216, 0.788, 1.0)", color8:"vec4(0.263, 0.38, 0.933, 1.0)",
+    color9:"vec4(0.282, 0.584, 0.937, 1.0)", color10:"vec4(0.298, 0.788, 0.941, 1.0)"
+  });
 
-  // Smooth boost
-  const BOOST_TARGET_MULT = 2.2;
-  const BOOST_RAMP_UP_SEC = 2.4;
-  const BOOST_RAMP_DOWN_SEC = 0.9;
+  // Audio & boost
+  const ENG_LOOP_START = 1.2, ENG_LOOP_END = 6.0, ENG_FADE = 0.25;
+  const BOOST_TARGET_MULT = 2.2, BOOST_RAMP_UP_SEC = 2.4, BOOST_RAMP_DOWN_SEC = 0.9;
 
-  // Çarpışma kutuları
+  // Hitbox
   const HITBOX_PLAYER = { x: 0.70, y: 0.92, z: 0.84 };
   const HITBOX_NPC    = { x: 0.72, y: 0.92, z: 0.84 };
-  const SIDE_SWIPE_X  = 0.38;
 
   function shrinkBox(box, scale){
     const size = new THREE.Vector3();
@@ -367,46 +347,18 @@
     return box;
   }
 
-  // Sunrise config
+  // Gün doğumu
   const SUNRISE_DURATION_SEC = 28;
-  const NIGHT_AMBIENT = 0.02;
-  const DAY_AMBIENT   = 0.10;
-  const NIGHT_POINT   = 0.8;
-  const DAY_POINT     = 5.0;
+  const NIGHT_AMBIENT = 0.02, DAY_AMBIENT = 0.10, NIGHT_POINT = 0.8, DAY_POINT = 5.0;
 
-  // Lane switching config
-  const CAR_BASE_X = 0.7;
-  const CAR_LANE_AMPLITUDE = 3.6;
-  const CAR_LERP = 0.08;
-  const CAR_BANK_MAX = 0.20;
-  const MOUSE_EXP = 1.25;
+  // Araç kontrol
+  const CAR_BASE_X = 0.7, CAR_LANE_AMPLITUDE = 3.6, CAR_LERP = 0.08, CAR_BANK_MAX = 0.20, MOUSE_EXP = 1.25;
 
-  // Camera tamer
-  const CAMERA_MOUSE_X_FACTOR = 1.8;
-  const CAMERA_PARALLAX = 0.60;
-  const LOOK_FOLLOW_RATIO = 0.70;
-  const LOOK_FOLLOW_STRENGTH = 0.08;
+  // Kamera
+  const CAMERA_MOUSE_X_FACTOR = 1.8, CAMERA_PARALLAX = 0.60, LOOK_FOLLOW_RATIO = 0.70, LOOK_FOLLOW_STRENGTH = 0.08;
 
-  // Traffic config
-  const PARKED_MAX = 3;
-  const PARKED_SPAWN_MIN_SEC = 3.2;
-  const PARKED_SPAWN_MEAN = 3.8;
-  const PARKED_BURST_CHANCE = 0.22;
-  const PARKED_BURST_GAP = 6.0;
-
-  const WALL_BAND_EARLY = 26;
-  const WALL_BAND_MID   = 20;
-  const WALL_BAND_LATE  = 16;
-  const WALL_WAVE_PRUNE_SEC = 8.0;
-
-  // Lane x
-  const PARKED_LANE_X_LEFT   = CAR_BASE_X - (CAR_LANE_AMPLITUDE * 0.96) - 0.25;
-  const PARKED_LANE_X_RIGHT  = CAR_BASE_X + (CAR_LANE_AMPLITUDE * 0.96) + 0.25;
-  const PARKED_LANE_X_MIDDLE = CAR_BASE_X;
-
-  // Speed knobs
-  const CITY_BASE_SPEED = 1.0;
-  const LANE_SPEED = Object.freeze({ LEFT:1.00, CENTER:1.15, RIGHT:0.90 });
+  // Trafik
+  const PARKED_MAX = 3, PARKED_SPAWN_MIN_SEC = 3.2, PARKED_SPAWN_MEAN = 3.8, PARKED_BURST_CHANCE = 0.22, PARKED_BURST_GAP = 6.0;
 
   function clampLaneX(x, isLeft){
     const SHOULDER = 0.50, INSET = 0.40;
@@ -501,6 +453,7 @@
 
   class MaterialsLibrary{ static default=new DefaultMaterial(); static road=new RoadMaterial(); static sun=new SunMaterial(); static mountain=new MountainMaterial(); static car=new CarMaterial(); static wheel=new WheelMaterial(); static light=new LightMaterial(); static buildingA=new BuildingMaterialA(); static buildingB=new BuildingMaterialB(); static buildingC=new BuildingMaterialC(); static buildingD=new BuildingMaterialD(); }
 
+
   // ====== OBJECTS ======
   class Road extends THREE.Group{
     constructor(){
@@ -513,7 +466,7 @@
       if(FLAGS.ENABLE_SHADOWS){ road.receiveShadow=true; }
       this.add(road);
 
-      // MOBILE: yansıma kapalı
+      // Mobilde reflector kapalı (yansıma yok)
       if(!IS_MOBILE_DEVICE){
         const refl=new THREE.Reflector(new THREE.PlaneGeometry(10,10),{
           color:new THREE.Color(0x7f7f7f),
@@ -546,8 +499,10 @@
       // Lamps + fog
       { const stopMat = MaterialsLibrary.light.clone();
         stopMat.color.set(0xff2a10); stopMat.emissive.set(0xff2a10); stopMat.emissiveIntensity=1.8;
-        const addLamp=(x,y,z,R,T)=>{ const outer=new THREE.Mesh(new THREE.TorusGeometry(R,T,20,48),stopMat); outer.rotation.y=Math.PI/2; outer.position.set(x,y,z); this.add(outer);
-          const inner=new THREE.Mesh(new THREE.TorusGeometry(R*0.72,T*0.60,16,40),stopMat); inner.rotation.y=Math.PI/2; inner.position.set(x,y,z); this.add(inner); };
+        const addLamp=(x,y,z,R,T)=>{
+          const outer=new THREE.Mesh(new THREE.TorusGeometry(R,T,20,48),stopMat); outer.rotation.y=Math.PI/2; outer.position.set(x,y,z); this.add(outer);
+          const inner=new THREE.Mesh(new THREE.TorusGeometry(R*0.72,T*0.60,16,40),stopMat); inner.rotation.y=Math.PI/2; inner.position.set(x,y,z); this.add(inner);
+        };
         const X=-0.17, Y=0.86;
         addLamp(X,Y,0.00,0.13,0.022); addLamp(X,Y,0.32,0.11,0.020);
         addLamp(X,Y,1.20,0.11,0.020); addLamp(X,Y,1.52,0.13,0.022);
@@ -562,27 +517,31 @@
         const legH=0.50; const legGeo=new THREE.BoxGeometry(0.10,legH,0.08); const legY=wingY-(wingThick/2)-(legH/2);
         const legLft=new THREE.Mesh(legGeo,metal); legLft.position.set(wingX-0.12,legY,wingZ-0.42); this.add(legLft);
         const legRgt=legLft.clone(); legRgt.position.z=wingZ+0.42; this.add(legRgt); }
-      // Quad exhaust + flames (aynı)
+      // Quad exhaust + flames
       { const pipeMat=new THREE.MeshStandardMaterial({ color:0xffffff, metalness:0.95, roughness:0.28 });
-        pipeMat.onBeforeCompile=(shader)=>{ shader.uniforms.gradA={value:new THREE.Color(0x2b2b2b)};
+        pipeMat.onBeforeCompile=(shader)=>{
+          shader.uniforms.gradA={value:new THREE.Color(0x2b2b2b)};
           shader.uniforms.gradB={value:new THREE.Color(0x9a9a9a)};
           shader.vertexShader=shader.vertexShader.replace('#include <uv_pars_vertex>','varying vec2 vUv;').replace('#include <uv_vertex>','vUv = uv;');
           shader.fragmentShader=shader.fragmentShader.replace('#include <color_fragment>',`
             #include <color_fragment>
             vec3 grad = mix( gradA.rgb, gradB.rgb, vUv.y );
-            diffuseColor.rgb = grad;`); };
+            diffuseColor.rgb = grad;`);
+        };
         const tipOrange=MaterialsLibrary.light.clone(); tipOrange.color.set(0xff7a3a); tipOrange.emissive.set(0xff7a3a); tipOrange.emissiveIntensity=0.06;
         const tipBlue=MaterialsLibrary.light.clone(); tipBlue.color.set(0x79d4ff); tipBlue.emissive.set(0x79d4ff); tipBlue.emissiveIntensity=0.04;
         const flameOMat=new THREE.MeshBasicMaterial({ color:0xff7a3a, transparent:true, opacity:0, blending:THREE.AdditiveBlending, depthWrite:false });
         const flameBMat=new THREE.MeshBasicMaterial({ color:0x4cc9f0, transparent:true, opacity:0, blending:THREE.AdditiveBlending, depthWrite:false });
         const rOuter=0.085, len=0.12; const x=-0.22, y=0.34; const zs=[0.10,0.28,1.24,1.42];
-        const exhaust=[]; const makePipe=(z)=>{ const pipe=new THREE.Mesh(new THREE.CylinderGeometry(rOuter,rOuter,len,32),pipeMat);
-            pipe.rotation.z=Math.PI/2; pipe.position.set(x,y,z); this.add(pipe);
-            const tipO=new THREE.Mesh(new THREE.CircleGeometry(rOuter*0.72,24),tipOrange); tipO.rotation.y=-Math.PI/2; tipO.position.set(x-len/2-0.001,y,z); this.add(tipO);
-            const tipB=new THREE.Mesh(new THREE.CircleGeometry(rOuter*0.72,24),tipBlue); tipB.rotation.y=-Math.PI/2; tipB.position.set(x-len/2-0.001,y,z); tipB.visible=false; this.add(tipB);
-            const flameO=new THREE.Mesh(new THREE.ConeGeometry(rOuter*0.85,len*0.6,14,1,true),flameOMat); flameO.rotation.z=-Math.PI/2; flameO.position.set(x-len/2-0.02,y,z); this.add(flameO);
-            const flameB=new THREE.Mesh(new THREE.ConeGeometry(rOuter*0.85,len*0.6,14,1,true),flameBMat); flameB.rotation.z=-Math.PI/2; flameB.position.set(x-len/2-0.02,y,z); this.add(flameB);
-            exhaust.push({ tipO,tipB,flameO,flameB, state:{ active:false, t0:0, duration:0, color:'orange' } }); };
+        const exhaust=[]; const makePipe=(z)=>{
+          const pipe=new THREE.Mesh(new THREE.CylinderGeometry(rOuter,rOuter,len,32),pipeMat);
+          pipe.rotation.z=Math.PI/2; pipe.position.set(x,y,z); this.add(pipe);
+          const tipO=new THREE.Mesh(new THREE.CircleGeometry(rOuter*0.72,24),tipOrange); tipO.rotation.y=-Math.PI/2; tipO.position.set(x-len/2-0.001,y,z); this.add(tipO);
+          const tipB=new THREE.Mesh(new THREE.CircleGeometry(rOuter*0.72,24),tipBlue); tipB.rotation.y=-Math.PI/2; tipB.position.set(x-len/2-0.001,y,z); tipB.visible=false; this.add(tipB);
+          const flameO=new THREE.Mesh(new THREE.ConeGeometry(rOuter*0.85,len*0.6,14,1,true),flameOMat); flameO.rotation.z=-Math.PI/2; flameO.position.set(x-len/2-0.02,y,z); this.add(flameO);
+          const flameB=new THREE.Mesh(new THREE.ConeGeometry(rOuter*0.85,len*0.6,14,1,true),flameBMat); flameB.rotation.z=-Math.PI/2; flameB.position.set(x-len/2-0.02,y,z); this.add(flameB);
+          exhaust.push({ tipO,tipB,flameO,flameB, state:{ active:false, t0:0, duration:0, color:'orange' } });
+        };
         zs.forEach(makePipe); this.userData.exhaust=exhaust; }
       // Wheels
       { const m=MaterialsLibrary.wheel; const g=new THREE.CylinderGeometry(1,1,1,12);
@@ -613,7 +572,6 @@
     }
   }
 
-  // Poisson
   function sampleExp(mean){ return -Math.log(1-Math.random()) * mean; }
 
   class ParkedTraffic extends THREE.Group{
@@ -706,7 +664,7 @@
     }
   }
 
-  // Buildings & Stars
+  // Şehir & yıldız
   class BuildingA extends THREE.Group{ constructor(){ super(); const m=MaterialsLibrary.buildingA; const g=new THREE.BoxGeometry(); const b=new THREE.Mesh(g,m); b.scale.set(10,15,10); b.position.set(0,-3,0); if(FLAGS.ENABLE_SHADOWS){ b.castShadow=true; } this.add(b); const rg=new THREE.ConeGeometry(5,15,7); const r=new THREE.Mesh(rg,m); r.position.set(0,5,0); this.add(r); } }
   class BuildingB extends THREE.Group{ constructor(){ super(); const m=MaterialsLibrary.buildingB; const g=new THREE.CylinderGeometry(); const b=new THREE.Mesh(g,m); b.scale.set(5,15,5); b.position.set(0,-3,0); if(FLAGS.ENABLE_SHADOWS){ b.castShadow=true; } this.add(b); const rg=new THREE.SphereGeometry(7); const r=new THREE.Mesh(rg,m); r.position.set(0,2,0); r.rotation.set(0,0.3,0); this.add(r); } }
   class BuildingC extends THREE.Group{ constructor(){ super(); const m=MaterialsLibrary.buildingC; const g=new THREE.BoxGeometry(); const b=new THREE.Mesh(g,m); b.scale.set(5,5,5); b.position.set(0,-8,0); if(FLAGS.ENABLE_SHADOWS){ b.castShadow=true; } this.add(b); } }
@@ -716,28 +674,33 @@
     static #getRandomBuilding(){ const c=Math.random(); if(c<0.2) return new BuildingA(); if(c<0.3) return new BuildingB(); if(c<0.9) return new BuildingC(); return new BuildingD(); }
     constructor(){
       super();
-      const ZSTEP = IS_MOBILE_DEVICE ? 30 : 20;        // MOBILE: daha seyrek
-      const XSTEP = IS_MOBILE_DEVICE ? 40 : 20;        // MOBILE: daha seyrek
+      // Mobilde daha seyrek
+      const ZSTEP = IS_MOBILE_DEVICE ? 30 : 20;
+      const XSTEP = IS_MOBILE_DEVICE ? 40 : 20;
       for(let z=0; z<200; z+=ZSTEP){
         for(let x=70; x>=10; x-=XSTEP){ this.#initBuilding(x,z); }
         for(let x=120; x<=180; x+=XSTEP){ this.#initBuilding(x,z); }
       }
     }
     #initBuilding(x,z){ const b=City.#getRandomBuilding(); b.position.set(x,20/2,z); this.add(b); }
-    update(speed=1){ this.children.forEach((b)=>{ const {x,z}=b.position; let newZ=z-0.5*speed; if(newZ<0){ newZ=200; } const y = newZ <= 150 ? 10 : 10 + 20 * ((150 - newZ) / 50); b.position.set(x,y,newZ); }); }
+    update(speed=1){
+      this.children.forEach((b)=>{
+        const {x,z}=b.position; let newZ=z-0.5*speed; if(newZ<0){ newZ=200; }
+        const y = newZ <= 150 ? 10 : 10 + 20 * ((150 - newZ) / 50);
+        b.position.set(x,y,newZ);
+      });
+    }
   }
 
   class Stars extends THREE.Group{
     constructor(){
       super();
-      const g=new THREE.SphereGeometry();
-      const m=MaterialsLibrary.light;
-      const STEP_X = IS_MOBILE_DEVICE ? 60 : 30;   // MOBILE: seyrek
-      const STEP_Y = IS_MOBILE_DEVICE ? 60 : 30;
+      const g=new THREE.SphereGeometry(); const m=MaterialsLibrary.light;
+      const STEP_X = IS_MOBILE_DEVICE ? 60 : 30, STEP_Y = IS_MOBILE_DEVICE ? 60 : 30;
       for(let x=-300; x<300; x+=STEP_X){
         for(let y=0; y<300; y+=STEP_Y){
           const s=new THREE.Mesh(g,m.clone());
-          const dx=25*Math.random(); const dy=25*Math.random(); const sc=Math.random();
+          const dx=25*Math.random(), dy=25*Math.random(), sc=Math.random();
           s.scale.set(sc,sc,sc); s.position.set(x+dx,y+dy,0); this.add(s);
         }
       }
@@ -752,9 +715,9 @@
     static car=new Car();
     static city=new City();
     static stars=new Stars();
-    static parkedLeft   = new ParkedTraffic(PARKED_LANE_X_LEFT,  true,  'L');
-    static parkedRight  = new ParkedTraffic(PARKED_LANE_X_RIGHT, false, 'R');
-    static parkedCenter = new ParkedTrafficMiddle(PARKED_LANE_X_MIDDLE);
+    static parkedLeft   = new ParkedTraffic(CAR_BASE_X - (CAR_LANE_AMPLITUDE * 0.96) - 0.25,  true,  'L');
+    static parkedRight  = new ParkedTraffic(CAR_BASE_X + (CAR_LANE_AMPLITUDE * 0.96) + 0.25, false, 'R');
+    static parkedCenter = new ParkedTrafficMiddle(CAR_BASE_X);
   }
 
   // ====== WORLD ======
@@ -839,8 +802,9 @@
 
     #initObjects(){
       const {road,car,sun,city,mountain,stars, parkedLeft, parkedRight, parkedCenter}=ObjectsLibrary;
-      // Arabayı biraz küçült (1 = orijinal)
-      const CAR_SCALE = 0.9; // örnek: %90
+
+      // Arabayı ufaltmak için tek yer: burada ölçekle
+      const CAR_SCALE = 0.90;  // %90 boyut
       car.scale.set(CAR_SCALE, CAR_SCALE, CAR_SCALE);
 
       road.position.set(0,0,100);
@@ -860,13 +824,26 @@
     }
 
     #initLights(){
-      const ambient = new THREE.AmbientLight(COLOR_PALETTE.color3, NIGHT_AMBIENT); this.add(ambient);
-      const point = new THREE.PointLight(COLOR_PALETTE.color1, NIGHT_POINT, 300, 0.5); point.position.set(0,30,180);
-      if(FLAGS.ENABLE_SHADOWS){ point.castShadow=true; } this.add(point);
-      this._ambient = ambient; this._point = point;
+      // Mobilde sadece ambient; masaüstünde ambient+point
+      const ambient = new THREE.AmbientLight(COLOR_PALETTE.color3, NIGHT_AMBIENT);
+      this.add(ambient);
+      this._ambient = ambient;
+
+      if(!IS_MOBILE_DEVICE){
+        const point = new THREE.PointLight(COLOR_PALETTE.color1, NIGHT_POINT, 300, 0.5);
+        point.position.set(0,30,180);
+        if(FLAGS.ENABLE_SHADOWS){ point.castShadow=true; }
+        this.add(point);
+        this._point = point;
+      } else {
+        this._point = { intensity: 0 }; // mobilde yok
+      }
     }
 
     #initHeadlights(){
+      // Mobilde farları tamamen kapat (performans)
+      if(IS_MOBILE_DEVICE){ this._headlights = null; return; }
+
       const mkLight = (xOffset)=>{
         const color = 0xfff6e5;
         const light = new THREE.SpotLight(color, 26, 64, Math.PI*0.10, 0.35, 2.2);
@@ -877,15 +854,9 @@
         return { light, target, xOffset, base:{ intensity: light.intensity, distance: light.distance, angle: light.angle } };
       };
       const left = mkLight(-0.45);
-
-      if(IS_MOBILE_DEVICE){
-        const group = new THREE.Group(); group.add(left.light); this.add(group);
-        this._headlights = { group, left, right:null };
-      } else {
-        const right = mkLight(+0.45); right.light.color.set(0xeef8ff);
-        const group = new THREE.Group(); group.add(left.light, right.light); this.add(group);
-        this._headlights = { group, left, right };
-      }
+      const right = mkLight(+0.45); right.light.color.set(0xeef8ff);
+      const group = new THREE.Group(); group.add(left.light, right.light); this.add(group);
+      this._headlights = { group, left, right };
     }
 
     setTrafficEnabled(b){
@@ -1003,13 +974,13 @@
 
       // Hızlar
       const speedMult = 1.0 + (BOOST_TARGET_MULT - 1.0) * this._boostLevel;
-      this.#saved.city.update(CITY_BASE_SPEED * speedMult * this._difficulty);
-      this.#saved.parkedLeft.update(LANE_SPEED.LEFT   * speedMult * this._difficulty);
-      this.#saved.parkedCenter.update(LANE_SPEED.CENTER * speedMult * this._difficulty);
-      this.#saved.parkedRight.update(LANE_SPEED.RIGHT * speedMult * this._difficulty);
+      this.#saved.city.update(1.0 * speedMult * this._difficulty);
+      this.#saved.parkedLeft.update(1.00 * speedMult * this._difficulty);
+      this.#saved.parkedCenter.update(1.15 * speedMult * this._difficulty);
+      this.#saved.parkedRight.update(0.90 * speedMult * this._difficulty);
       this._checkBoostOvertakes();
 
-      // Far hedefleri
+      // Far hedefleri (masaüstü)
       if(this._headlights){
         const { left, right } = this._headlights;
         const baseX = car.position.x; const baseY = 0.62; const baseZ = car.position.z + 1.15; const aheadZ = car.position.z + 22;
@@ -1022,14 +993,6 @@
           right.light.position.set(baseX + right.xOffset, baseY, baseZ);
           right.target.position.set(baseX + right.xOffset * 0.6, baseY - 0.06, aheadZ);
           right.light.target.updateMatrixWorld();
-        }
-      }
-
-      // Boost sırasında rastgele alev patlamaları
-      if(this._boost){
-        if( (t - this._lastBurst) > this._nextBurstDelay ){
-          this.triggerExhaustBurst();
-          this._nextBurstDelay = 0.18 + Math.random()*0.45;
         }
       }
 
@@ -1052,7 +1015,7 @@
         }
       }
 
-      // Şerit değişim / Makas / Çarpışma
+      // Şerit / Makas / Çarpışma
       const lane = this._laneFromX(car.position.x);
       if(lane !== this._lane){
         if((t - this._lastLaneChangeTime) > 0.35){
@@ -1071,7 +1034,11 @@
       this.#saved.sun.position.y = sunY;
       this.#saved.stars.setOpacity(1.0 - clamped);
       this._ambient.intensity = NIGHT_AMBIENT + (DAY_AMBIENT - NIGHT_AMBIENT) * clamped;
-      this._point.intensity   = NIGHT_POINT + (DAY_POINT   - NIGHT_POINT)   * clamped;
+
+      if(this._point){ // masaüstü
+        this._point.intensity   = NIGHT_POINT + (DAY_POINT   - NIGHT_POINT)   * clamped;
+      }
+
       if(this._headlights){
         const f = 1 - THREE.MathUtils.smoothstep(clamped, 0.12, 0.80);
         const L = this._headlights.left?.light; const R = this._headlights.right?.light;
@@ -1100,7 +1067,6 @@
     requestAnimationFrame(()=> el.classList.add('show'));
     setTimeout(()=>{ el.classList.remove('show'); setTimeout(()=> el.remove(), 250); }, 1200);
   }
-
   function showPointToast(label, delta){
     const html = `${label} <span class="points">+${delta} Puan</span>`;
     showToast(html, { html:true });
@@ -1258,10 +1224,17 @@
       this.#scene.add(this.#world);
     }
 
-    #initCamera(){ const fov=45, aspect=window.innerWidth/window.innerHeight, near=1, far=1000; this.#camera=new THREE.PerspectiveCamera(fov,aspect,near,far); this.#camera.position.set(0,2,1); this.#camera.lookAt(0,0,200); this.#camera.updateProjectionMatrix(); this.#cameraData={ positionX:0, positionY:2, lookAtX:0 }; }
+    #initCamera(){
+      const fov=45, aspect=window.innerWidth/window.innerHeight, near=1, far=1000;
+      this.#camera=new THREE.PerspectiveCamera(fov,aspect,near,far);
+      this.#camera.position.set(0,2,1);
+      this.#camera.lookAt(0,0,200);
+      this.#camera.updateProjectionMatrix();
+      this.#cameraData={ positionX:0, positionY:2, lookAtX:0 };
+    }
     #initRenderer(){
       const clearColor=COLOR_PALETTE.black, clearColorAlpha=1;
-      const useLogDepth = !IS_MOBILE_DEVICE; // mobilde kapat
+      const useLogDepth = !IS_MOBILE_DEVICE; // mobilde kapalı
       this.#renderer=new THREE.WebGLRenderer({ alpha:true, logarithmicDepthBuffer: useLogDepth, antialias:false, powerPreference:'high-performance' });
       this.#renderer.setClearColor(clearColor, clearColorAlpha);
       const DPR_CAP = IS_MOBILE_DEVICE ? 1.1 : 2.0;
@@ -1275,13 +1248,25 @@
       const width=window.innerWidth, height=window.innerHeight;
       this.#composer=new THREE.EffectComposer(this.#renderer);
       this.#composer.setSize(width,height);
-      this.#initRenderPass();
-      if(FLAGS.ENABLE_BLOOM){ this.#initBloomPass(); }
-      if(FLAGS.ENABLE_NOISE){ this.#initShaderPass(); }
+      const renderPass=new THREE.RenderPass(this.#scene,this.#camera);
+      this.#composer.addPass(renderPass);
+      if(FLAGS.ENABLE_BLOOM){
+        const resolution=new THREE.Vector2(width,height);
+        const bloomPass=new THREE.UnrealBloomPass(resolution,0.8,0.5,0.1);
+        this.#composer.addPass(bloomPass);
+      }
+      if(FLAGS.ENABLE_NOISE){
+        const pass=new THREE.ShaderPass({
+          uniforms:{ tDiffuse:{ type:"t", value:null }, uTime:{ value:1 }, uStrength:{ value:1 } },
+          vertexShader:`varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
+          fragmentShader:`uniform float uTime; uniform float uStrength; uniform sampler2D tDiffuse; varying vec2 vUv;
+            float rand(vec2 seed){ return fract(sin(dot(seed, vec2(12.9898,78.233))) * 43758.5453123); }
+            float noise(vec2 position){ vec2 b=floor(position); float tl=rand(b); float tr=rand(b+vec2(1.0,0.0)); float bl=rand(b+vec2(0.0,1.0)); float br=rand(b+vec2(1.0,1.0)); vec2 c=smoothstep(0.0,1.0,fract(position)); return mix(tl,tr,c.x) + (bl-tl)*c.y*(1.0-c.x) + (br-tr)*c.x*c.y; }
+            void main(){ vec4 color=texture2D(tDiffuse, vUv); float d=uStrength * 0.05 * noise(50.0 * (100.0 * uTime + vec2(vUv.x, 20.0 * vUv.y))); gl_FragColor=vec4(color.rgb - d, 1.0); }`
+        });
+        pass.renderToScreen=true; this.#composer.addPass(pass); this.#noisePass = pass;
+      }
     }
-    #initRenderPass(){ const renderPass=new THREE.RenderPass(this.#scene,this.#camera); this.#composer.addPass(renderPass); }
-    #initBloomPass(){ const width=window.innerWidth, height=window.innerHeight; const resolution=new THREE.Vector2(width,height); const strength=0.8, radius=0.5, threshold=0.1; const bloomPass=new THREE.UnrealBloomPass(resolution,strength,radius,threshold); this.#composer.addPass(bloomPass); }
-    #initShaderPass(){ const pass=new THREE.ShaderPass({ uniforms:{ tDiffuse:{ type:"t", value:null }, uTime:{ value:1 }, uStrength:{ value:1 } }, vertexShader:`varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`, fragmentShader:`uniform float uTime; uniform float uStrength; uniform sampler2D tDiffuse; varying vec2 vUv; float rand(vec2 seed); float noise(vec2 position); void main(){ vec4 color=texture2D(tDiffuse, vUv); float d=uStrength * 0.05 * noise(50.0 * (100.0 * uTime + vec2(vUv.x, 20.0 * vUv.y))); color = vec4(color.r - d, color.g - d, color.b - d, 1.0); gl_FragColor=color; } float rand(vec2 seed){ return fract(sin(dot(seed, vec2(12.9898,78.233))) * 43758.5453123);} float noise(vec2 position){ vec2 blockPosition=floor(position); float tl=rand(blockPosition); float tr=rand(blockPosition+vec2(1.0,0.0)); float bl=rand(blockPosition+vec2(0.0,1.0)); float br=rand(blockPosition+vec2(1.0,1.0)); vec2 c=smoothstep(0.0,1.0,fract(position)); return mix(tl,tr,c.x) + (bl-tl)*c.y*(1.0-c.x) + (br-tr)*c.x*c.y; }` }); pass.renderToScreen=true; this.#composer.addPass(pass); this.#noisePass = pass; }
     #initEventListeners(){
       window.addEventListener("resize", this.#onWindowResize.bind(this));
       document.addEventListener("mousemove", this.#onMouseMove.bind(this));
@@ -1343,24 +1328,26 @@
 
       this._btn.addEventListener('click', ()=> this.startRound());
 
-      // Müzik mute
+      // Mute ve volume
       this._bgmMuteBtn.addEventListener('click', ()=>{
         this._bgmMuted = !this._bgmMuted;
         this._updateAudioUi();
         if(!this._bgmStarted && !this._bgmMuted) this._ensureBgmStarted();
       });
-      // Motor mute
       this._engMuteBtn.addEventListener('click', ()=>{
         this._engMuted = !this._engMuted;
         this._updateAudioUi();
         if(!this._engStarted && !this._engMuted) this._ensureEngineStarted();
       });
-      // Ses düzeyi
       this._bgmVol.addEventListener('input', ()=> this._applyVolumes());
       this._engVol.addEventListener('input', ()=> this._applyVolumes());
     }
 
-    #onWindowResize(){ const width=window.innerWidth, height=window.innerHeight; this.#camera.aspect=width/height; this.#camera.updateProjectionMatrix(); this.#renderer.setSize(width,height); this.#composer.setSize(width,height); }
+    #onWindowResize(){
+      const width=window.innerWidth, height=window.innerHeight;
+      this.#camera.aspect=width/height; this.#camera.updateProjectionMatrix();
+      this.#renderer.setSize(width,height); this.#composer.setSize(width,height);
+    }
     #onMouseMove(e){
       this.#cameraData.positionX=(CAMERA_MOUSE_X_FACTOR*(window.innerWidth/2 - e.clientX))/window.innerWidth;
       this.#cameraData.positionY=2 + (0.5*(window.innerHeight/2 - e.clientY))/window.innerHeight;
@@ -1391,12 +1378,6 @@
         elapsed = this._frozenElapsedSec;
       }
       this._hudTime.textContent = `Süre: ${this._formatTime(elapsed)}`;
-    }
-
-    addScore(x, toastMsg){
-      if(this._mode!=='RUNNING') return;
-      this._score += x; this._updateHud();
-      if(toastMsg) showToast(toastMsg);
     }
 
     _onBoostOvertake(){ this._score += 3; this._updateHud(); showPointToast("Geçiş (Boost)", 3); }
@@ -1493,7 +1474,7 @@
     #updateEverything(){
       const now=performance.now()/1000;
 
-      // 1 sn uzun basışta "patlat" (tek atım)
+      // 1 sn basınca tek atım boost sesi
       if (this._spaceDown && this.#world.isBoosting() && this._boostHoldStart > 0 && !this._boostPopPlayed) {
         const held = now - this._boostHoldStart;
         if (held >= 1.0) {
@@ -1506,7 +1487,7 @@
       const p = Math.max(0, Math.min(1, t / SUNRISE_DURATION_SEC));
       const dt = now - this._lastNow; this._lastNow = now;
 
-      // Motor pitch'i boost seviyesine göre yumuşak değiştir
+      // Motor pitch'i boost seviyesine göre yumuşat
       if(this._engStarted){
         const b = this.#world.getBoostLevel ? this.#world.getBoostLevel() : (this.#world.isBoosting()?1:0);
         const targetRate = 1.0 + 0.25 * b;
@@ -1535,7 +1516,7 @@
       // Dünya
       this.#world.update();
 
-      // shader uniforms (cache üzerinden)
+      // shader uniforms
       for(const sh of (this._animShaders || [])){ sh.uniforms.uTime.value = now; }
       if(this.#noisePass){ this.#noisePass.uniforms.uTime.value = now % 10; this.#noisePass.uniforms.uStrength.value = 1.0 - p; }
 
@@ -1551,6 +1532,7 @@
       this.#camera.lookAt(this.#cameraData.lookAtX, 0, 200);
       this.#camera.updateProjectionMatrix();
 
+      // Gün doğumu ışık-geçişi
       this.#world.setSunriseProgress(p);
       this.#renderer.toneMappingExposure = 0.6 + 0.9 * p;
 
