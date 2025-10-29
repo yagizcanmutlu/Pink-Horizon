@@ -315,12 +315,12 @@
   const COLOR_PALETTE = Object.freeze({ black:0x010101, white:0xeeeeee, color1:0xf72585, color2:0xb5179e, color3:0x7209b7, color4:0x560bad, color5:0x480ca8, color6:0x3a0ca3, color7:0x3f37c9, color8:0x4361ee, color9:0x4895ef, color10:0x4cc9f0 });
   const COLOR_PALETTE_GLSL = Object.freeze({ black:"vec4(0.04, 0.04, 0.04, 1.0)", white:"vec4(0.933, 0.933, 0.933, 1.0)", color1:"vec4(0.969, 0.145, 0.522, 1.0)", color2:"vec4(0.71, 0.09, 0.62, 1.0)", color3:"vec4(0.447, 0.035, 0.718, 1.0)", color4:"vec4(0.337, 0.043, 0.678, 1.0)", color5:"vec4(0.282, 0.047, 0.659, 1.0)", color6:"vec4(0.227, 0.047, 0.639, 1.0)", color7:"vec4(0.247, 0.216, 0.788, 1.0)", color8:"vec4(0.263, 0.38, 0.933, 1.0)", color9:"vec4(0.282, 0.584, 0.937, 1.0)", color10:"vec4(0.298, 0.788, 0.941, 1.0)" });
 
-  // Motor döngüsü (sadece motor sesi için)
+  // Motor döngüsü (şimdilik tek loop kullanıyoruz)
   const ENG_LOOP_START = 1.2;
   const ENG_LOOP_END   = 6.0;
   const ENG_FADE       = 0.25;
 
-  // Smooth boost (2–3 sn'de aç/kapat)
+  // Smooth boost
   const BOOST_TARGET_MULT = 2.2;
   const BOOST_RAMP_UP_SEC = 2.4;
   const BOOST_RAMP_DOWN_SEC = 0.9;
@@ -1096,7 +1096,6 @@
       this._settingsBtn= document.getElementById('settingsBtn');
       this._helpPanel  = document.getElementById('helpPanel');
 
-      // Panel toggle
       this._helpBtn.addEventListener('click', ()=>{
         this._helpPanel.classList.toggle('hidden');
         if(!this._helpPanel.classList.contains('hidden')){ this._audioPanel?.classList.add('hidden'); }
@@ -1115,11 +1114,9 @@
       });
 
       // === Audio ===
-      // Boost sürekli sesi (loop)
       this._boost = new Audio("https://cdn.prod.website-files.com/67fb1cd83af51c4fe96dacb2/69003b7a671ad7cf11b650a9_boost_speed.MP3");
       this._boost.loop = true; this._boost.preload = "auto"; this._boost.volume = 0.8; this._boostStarted = false;
 
-      // 1 sn uzun basış patlatması (tek atım)
       this._boostPop = new Audio("https://cdn.prod.website-files.com/67fb1cd83af51c4fe96dacb2/69001ef687d7fa183b58460a_boost.MP3");
       this._boostPop.preload = "auto"; this._boostPop.volume = 0.7;
 
@@ -1128,7 +1125,6 @@
       this._bgm = new Audio("https://cdn.prod.website-files.com/67fb1cd83af51c4fe96dacb2/68ffb4adf30691cf2d7ec738_Night%20Patrol.mp3");
       this._bgm.loop = true; this._bgm.preload = "auto"; this._bgm.volume = 0.6;
 
-      // Motor (şimdilik tek kanal kullanıyoruz)
       this._engine = new Audio("https://cdn.prod.website-files.com/67fb1cd83af51c4fe96dacb2/69003db58dbf725d05302157_normalspeedv1.MP3");
       this._engine.loop = true; this._engine.preload = "auto"; this._engine.volume = 0.7;
 
@@ -1168,7 +1164,7 @@
       this.#initComposer();
       this.#initEventListeners();
       this.#onWindowResize();
-      this.#cacheAnimShaders();             // MOBILE: shader traverse cache
+      this.#cacheAnimShaders();
       this.#root.classList.add(FullScreen3DExample.CSS_ROOT_LOADED_VARIANT);
 
       // === PRELOADER adımları ===
