@@ -34,7 +34,7 @@
       text-shadow:0 0 8px rgba(76,201,240,.35)
     }
 
-    :root { --lower-ui-top: 72%; } /* 68–76% arası deneyebilirsin */
+    :root { --lower-ui-top: 72%;   --fab-lift: 36px; --safe-bottom: env(safe-area-inset-bottom); --fab-gap: 52px; } /* 68–76% arası deneyebilirsin */
 
     /* TOASTS → alt orta ve SADECE METİN */
     .toasts{
@@ -98,7 +98,7 @@
       position: fixed;
       left: 50%;
       right: auto;          /* eskiyi iptal */
-      bottom: calc(60px + env(safe-area-inset-bottom)); /* FAB yüksekliği + boşluk */
+      bottom: calc(max(14px, var(--safe-bottom)) + var(--fab-lift) + var(--fab-gap)); /* FAB yüksekliği + boşluk */
       transform: translateX(-50%);
       display:flex; flex-direction:column; gap:10px;
       padding:10px 12px; border-radius:16px;
@@ -123,11 +123,12 @@
 
     /* FAB: ? ve Ses Ayarları ALT-ORTA */
     .fab-col{
-      position:fixed;
-      left:50%;
-      bottom: max(14px, env(safe-area-inset-bottom));
-      transform:translateX(-50%);
-      display:flex; gap:10px; z-index:13; pointer-events:auto;
+      position: fixed;
+      left: 50%;
+      bottom: calc(max(14px, var(--safe-bottom)) + var(--fab-lift));
+      transform: translateX(-50%);
+      display: flex; gap: 10px;
+      z-index: 13; pointer-events: auto;
     }
     .glass-btn{
       all:unset; cursor:pointer; width:38px; height:38px; display:grid; place-items:center; border-radius:999px; color:#fff;
