@@ -11,18 +11,6 @@
     .full-screen-3d-example{opacity:0;transition:opacity 1s ease-out}
     .full-screen-3d-example.-loaded{opacity:1}
 
-    /* === PRELOADER === */
-    .preloader{
-      position:fixed; inset:0; background:#000; z-index:9999;
-      display:grid; place-items:center;
-      font-family:ui-monospace,Menlo,Consolas,monospace; color:#fff;
-    }
-    .preloader .box{ width:min(420px,90vw); }
-    .preloader .title{ margin-bottom:10px; opacity:.9 }
-    .preloader .bar{ height:8px; background:rgba(255,255,255,.12); border-radius:999px; overflow:hidden; }
-    .preloader #pl-bar{ height:100%; width:0%; background:linear-gradient(90deg,#4cc9f0,#f72585); }
-    .preloader.hidden{ display:none!important; }
-
     /* Overlay güvenlik */
     .overlay.hidden{display:none!important;}
 
@@ -179,13 +167,6 @@
   <script src="https://unpkg.com/three@0.146.0/examples/js/objects/Reflector.js"></script>
 </head>
 <body>
-  <!-- PRELOADER -->
-  <div id="preloader" class="preloader">
-    <div class="box">
-      <div class="title">Yükleniyor… <span id="pl-pct">0%</span></div>
-      <div class="bar"><div id="pl-bar"></div></div>
-    </div>
-  </div>
 
   <div id="root" class="full-screen-3d-example"></div>
 
@@ -1086,11 +1067,6 @@
     constructor(root){
       this.#root=root; this.#root.classList.add(FullScreen3DExample.CSS_ROOT);
 
-      // PRELOADER el'leri
-      this._preEl   = document.getElementById('preloader');
-      this._plPctEl = document.getElementById('pl-pct');
-      this._plBarEl = document.getElementById('pl-bar');
-
       // Yardım & Ayarlar
       this._helpBtn    = document.getElementById('helpBtn');
       this._settingsBtn= document.getElementById('settingsBtn');
@@ -1166,19 +1142,6 @@
       this.#onWindowResize();
       this.#cacheAnimShaders();
       this.#root.classList.add(FullScreen3DExample.CSS_ROOT_LOADED_VARIANT);
-
-      // === PRELOADER adımları ===
-      const steps = new Set(['bgm','eng','compile']);
-      const done  = new Set();
-      const tick  = () => {
-        const p = Math.round( (done.size/steps.size)*100 );
-        this._plPctEl.textContent = p + '%';
-        this._plBarEl.style.width = p + '%';
-        if (done.size === steps.size) { setTimeout(()=> this._preEl.classList.add('hidden'), 400); }
-      };
-      this._bgm.addEventListener('canplaythrough', ()=>{ done.add('bgm'); tick(); }, {once:true});
-      this._engine.addEventListener('canplaythrough', ()=>{ done.add('eng'); tick(); }, {once:true});
-      requestAnimationFrame(()=>{ try{ this.#renderer.compile(this.#scene, this.#camera); }catch(_){ } done.add('compile'); tick(); });
 
       // Dinamik DPR vars
       this._dprMin = 0.65;
