@@ -3,13 +3,25 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>3D Night Racing – Crash→Idle Night, Random Spawns, Fresh Collisions v08</title>
+  <title>3D Night Racing – Crash→Idle Night, Random Spawns, Fresh Collisions v09</title>
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
     html,body{height:100%;background:#000}
     #root{height:100dvh;width:100vw;overflow:hidden}
     .full-screen-3d-example{opacity:0;transition:opacity 1s ease-out}
     .full-screen-3d-example.-loaded{opacity:1}
+
+    /* === PRELOADER === */
+    .preloader{
+      position:fixed; inset:0; background:#000; z-index:9999;
+      display:grid; place-items:center;
+      font-family:ui-monospace,Menlo,Consolas,monospace; color:#fff;
+    }
+    .preloader .box{ width:min(420px,90vw); }
+    .preloader .title{ margin-bottom:10px; opacity:.9 }
+    .preloader .bar{ height:8px; background:rgba(255,255,255,.12); border-radius:999px; overflow:hidden; }
+    .preloader #pl-bar{ height:100%; width:0%; background:linear-gradient(90deg,#4cc9f0,#f72585); }
+    .preloader.hidden{ display:none!important; }
 
     /* Overlay güvenlik */
     .overlay.hidden{display:none!important;}
@@ -76,7 +88,6 @@
     }
     .panel h1{ font-size:20px; margin-bottom:6px; text-shadow:0 2px 10px rgba(0,0,0,.6) }
     .panel p { opacity:.9;  margin-bottom:10px }
-
     .panel button{
       all: unset; cursor: pointer; display: inline-block; padding: 10px 18px; border-radius: 14px; color:#fff; font-weight:800;
       text-shadow: 0 2px 10px rgba(0,0,0,.6);
@@ -92,7 +103,6 @@
       box-shadow: 0 12px 36px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.3), inset 0 -8px 18px rgba(255,255,255,.1);
     }
     .panel button:active{ transform: translateY(1px) scale(.99); }
-
     .overlay.hidden { display: none !important; }
 
     /* Sağ-alt ses paneli (aero glass) */
@@ -169,6 +179,14 @@
   <script src="https://unpkg.com/three@0.146.0/examples/js/objects/Reflector.js"></script>
 </head>
 <body>
+  <!-- PRELOADER -->
+  <div id="preloader" class="preloader">
+    <div class="box">
+      <div class="title">Yükleniyor… <span id="pl-pct">0%</span></div>
+      <div class="bar"><div id="pl-bar"></div></div>
+    </div>
+  </div>
+
   <div id="root" class="full-screen-3d-example"></div>
 
   <!-- HUD -->
@@ -213,12 +231,14 @@
     <div class="row">
       <button id="engMuteBtn" class="mute-btn" type="button" aria-label="Motoru kapat" data-muted="false" title="Motor">
         <span class="icon-on">
+          <!-- SES AÇ -->
           <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24">
             <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M17.5 8.43A4.985 4.985 0 0 1 19 12a4.984 4.984 0 0 1-1.43 3.5M14 6.135v11.73a1 1 0 0 1-1.64.768L8 15H6a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h2l4.36-3.633a1 1 0 0 1 1.64.768Z"/>
           </svg>
         </span>
         <span class="icon-off">
+          <!-- SES KAPAT -->
           <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24">
             <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M15.5 8.43A4.985 4.985 0 0 1 17 12c0 1.126-.5 2.5-1.5 3.5m2.864-9.864A8.972 8.972 0 0 1 21 12c0 2.023-.5 4.5-2.5 6M7.8 7.5l2.56-2.133a1 1 0 0 1 1.64.768V12m0 4.5v1.365a1 1 0 0 1-1.64.768L6 15H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1m1-4 14 14"/>
@@ -792,6 +812,10 @@
 
     #initObjects(){
       const {road,car,sun,city,mountain,stars, parkedLeft, parkedRight, parkedCenter}=ObjectsLibrary;
+      // Arabayı biraz küçült (1 = orijinal)
+      const CAR_SCALE = 0.9; // örnek: %90
+      car.scale.set(CAR_SCALE, CAR_SCALE, CAR_SCALE);
+
       road.position.set(0,0,100);
       sun.position.set(0,-15,200); sun.rotation.set(-Math.PI,0,0);
       city.position.set(-100,0,0);
@@ -1038,7 +1062,6 @@
   // ====== UI helpers ======
   let __lastToastAt = 0; // MOBILE throttle
   function showToast(msg, opts={}){
-    // MOBILE: çok sık toast spam'ini kırp
     const now = performance.now();
     if (IS_MOBILE_DEVICE && now - __lastToastAt < 250) return;
     __lastToastAt = now;
@@ -1062,6 +1085,11 @@
     #root; #scene; #world; #camera; #cameraData; #renderer; #composer; #startTime; #noisePass;
     constructor(root){
       this.#root=root; this.#root.classList.add(FullScreen3DExample.CSS_ROOT);
+
+      // PRELOADER el'leri
+      this._preEl   = document.getElementById('preloader');
+      this._plPctEl = document.getElementById('pl-pct');
+      this._plBarEl = document.getElementById('pl-bar');
 
       // Yardım & Ayarlar
       this._helpBtn    = document.getElementById('helpBtn');
@@ -1143,6 +1171,26 @@
       this.#cacheAnimShaders();             // MOBILE: shader traverse cache
       this.#root.classList.add(FullScreen3DExample.CSS_ROOT_LOADED_VARIANT);
 
+      // === PRELOADER adımları ===
+      const steps = new Set(['bgm','eng','compile']);
+      const done  = new Set();
+      const tick  = () => {
+        const p = Math.round( (done.size/steps.size)*100 );
+        this._plPctEl.textContent = p + '%';
+        this._plBarEl.style.width = p + '%';
+        if (done.size === steps.size) { setTimeout(()=> this._preEl.classList.add('hidden'), 400); }
+      };
+      this._bgm.addEventListener('canplaythrough', ()=>{ done.add('bgm'); tick(); }, {once:true});
+      this._engine.addEventListener('canplaythrough', ()=>{ done.add('eng'); tick(); }, {once:true});
+      requestAnimationFrame(()=>{ try{ this.#renderer.compile(this.#scene, this.#camera); }catch(_){ } done.add('compile'); tick(); });
+
+      // Dinamik DPR vars
+      this._dprMin = 0.65;
+      this._dprMax = IS_MOBILE_DEVICE ? 1.1 : 2.0;
+      this._dpr    = Math.min(window.devicePixelRatio||1, this._dprMax);
+      this._fpsEMA = 60;
+      this._lastFpsAdjust = performance.now()/1000;
+
       // Gece başlangıcı
       this.#startTime = performance.now()/1000;
       this._spaceDown=false;
@@ -1190,7 +1238,8 @@
     #initCamera(){ const fov=45, aspect=window.innerWidth/window.innerHeight, near=1, far=1000; this.#camera=new THREE.PerspectiveCamera(fov,aspect,near,far); this.#camera.position.set(0,2,1); this.#camera.lookAt(0,0,200); this.#camera.updateProjectionMatrix(); this.#cameraData={ positionX:0, positionY:2, lookAtX:0 }; }
     #initRenderer(){
       const clearColor=COLOR_PALETTE.black, clearColorAlpha=1;
-      this.#renderer=new THREE.WebGLRenderer({ alpha:true, logarithmicDepthBuffer:true });
+      const useLogDepth = !IS_MOBILE_DEVICE; // mobilde kapat
+      this.#renderer=new THREE.WebGLRenderer({ alpha:true, logarithmicDepthBuffer: useLogDepth, antialias:false, powerPreference:'high-performance' });
       this.#renderer.setClearColor(clearColor, clearColorAlpha);
       const DPR_CAP = IS_MOBILE_DEVICE ? 1.1 : 2.0;
       this.#renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, DPR_CAP));
@@ -1463,7 +1512,7 @@
       // Dünya
       this.#world.update();
 
-      // shader uniforms (MOBILE: cache üzerinden)
+      // shader uniforms (cache üzerinden)
       for(const sh of (this._animShaders || [])){ sh.uniforms.uTime.value = now; }
       if(this.#noisePass){ this.#noisePass.uniforms.uTime.value = now % 10; this.#noisePass.uniforms.uStrength.value = 1.0 - p; }
 
@@ -1481,6 +1530,20 @@
 
       this.#world.setSunriseProgress(p);
       this.#renderer.toneMappingExposure = 0.6 + 0.9 * p;
+
+      // === Dinamik DPR (mobil) ===
+      const instFps = dt > 0 ? (1/dt) : 60;
+      this._fpsEMA = this._fpsEMA*0.92 + instFps*0.08;
+      if (IS_MOBILE_DEVICE && (now - this._lastFpsAdjust > 2.0)){
+        this._lastFpsAdjust = now;
+        if (this._fpsEMA < 46 && this._dpr > this._dprMin){
+          this._dpr = Math.max(this._dprMin, this._dpr - 0.1);
+          this.#renderer.setPixelRatio(this._dpr); this.#onWindowResize();
+        } else if (this._fpsEMA > 58 && this._dpr < this._dprMax){
+          this._dpr = Math.min(this._dprMax, this._dpr + 0.05);
+          this.#renderer.setPixelRatio(this._dpr); this.#onWindowResize();
+        }
+      }
 
       this._updateHud();
     }
